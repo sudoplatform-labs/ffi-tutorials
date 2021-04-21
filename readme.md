@@ -1,6 +1,7 @@
-#Creating Simple Language Wrappers for Rust Libraries
+# Creating Simple Language Wrappers for Rust Libraries
 <BR>
-##Background
+  
+## Background
 
 Modern software development efforts often use statically-linked or dynamically-linked libraries in order to facilitate code reuse between applications. When libraries are created using programming languages that are different from the importing applications, the library is considered *foreign code* by the application. In order to communicate between the application and library, a common function calling and data exchange protocol must be established. This common protocol is referred to as a *Foreign Function Interface (FFI)*.
 
@@ -8,7 +9,7 @@ This set of tutorials starts with a demonstration of how FFI layers are created 
 
 For these tutorials, Rust is used for the underlying libraries and test applications are demonstrated using C, Swift, and Python.
 
-##Tutorials
+## Tutorials
 
 1. [Simple Rust Library Foreign Function Interface](./Quick_FFI_Intro) - this tutorial introduces the basic concepts of creating a Rust library, adding an FFI layer, and consuming the library in a C application.
 
