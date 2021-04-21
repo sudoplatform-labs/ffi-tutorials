@@ -2,7 +2,7 @@
 
 
 ## Background
-In the previous tutorial ([Creating Language Wrappers for Rust Libraries - Part 1](https://github.com/sudoplatform-labs/ffi-wrapper-tutorial1)), methods were presented for creating platform-independent and programming language-independent libraries using the [Rust](https://www.rust-lang.org) programming language.  Part 1 also demonstrated how to use the [Mozilla](https://www.mozilla.org/) [uniffi](https://github.com/mozilla/uniffi-rs) tool to *automatically* generate language wrappers for Swift and Python. Test applications (for Swift and Python) were created and used to demonstrate how to import the Rust library using the generated language wrappers.  (Note:  some of the example material was adapted from various uniffi examples.)
+In the previous tutorial ([Creating Language Wrappers for Rust Libraries - Part 1](https://github.com/sudoplatform-labs/ffi-tutorials/tree/main/Wrapper_Intro)), methods were presented for creating platform-independent and programming language-independent libraries using the [Rust](https://www.rust-lang.org) programming language.  Part 1 also demonstrated how to use the [Mozilla](https://www.mozilla.org/) [uniffi](https://github.com/mozilla/uniffi-rs) tool to *automatically* generate language wrappers for Swift and Python. Test applications (for Swift and Python) were created and used to demonstrate how to import the Rust library using the generated language wrappers.  (Note:  some of the example material was adapted from various uniffi examples.)
 
 
 ## Tutorial
