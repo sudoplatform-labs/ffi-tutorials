@@ -1,0 +1,5 @@
+namespace library {
+
+    boolean bool_inc_test(boolean value);
+
+};
