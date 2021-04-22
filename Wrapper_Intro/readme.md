@@ -102,7 +102,7 @@ In UDL, all of the API functions must be specified in the UDL file under the *na
 The scaffolding layer is set of code that exposes the library's API and serializes the specified data types as an enhanced FFI layer.  Generating the scaffolding layer is a simple process that is done at the command line by typing:
 
 `
-uniffi-bindgen scaffolding ./src/my_library.uniffi.udl
+uniffi-bindgen scaffolding ./src/library.uniffi.udl
 `
 
 Executing this command will create a file called *./src/library.uniffi.uniffi.rs*. It is important to *not* modify this file.  However, viewing it in a code editor will show that ~136 lines of Rust code have been created. This code constitutes the FFI and contains numerous comments describing its operation.  The FFI routine correspondig to the API function, bool_inc_test( ), created above is found at line ~118 and is as follows:
