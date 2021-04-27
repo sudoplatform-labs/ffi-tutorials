@@ -32,7 +32,7 @@ To quickly build and test the sample code, please do the following:
 
 1. Download the application code:
 
-	 `git clone git@github.com:sudoplatform-labs/ffi-tutorial.git`
+	 `git clone git@github.com:sudoplatform-labs/ffi-tutorials.git`
 	 
 2. Build the library
 	1. Navigate into the "ffi-tutorial/countchars" sub-directory and type
@@ -41,7 +41,7 @@ To quickly build and test the sample code, please do the following:
 		
 	2. The created libraries (libcharcount.a and libcharcount.dylib) will be created in ./target/debug/
 3. Build and run the sample C-language test app
-	1. Navigate into the project sub-directory "c" and build the test application by typing:
+	1. Navigate into the project sub-directory "test_app/" and build the test application by typing:
 		
 		`gcc main.c -L ../countchars/target/debug -lcountchars -o main`
 		
@@ -181,7 +181,11 @@ To create the FFI Tutorial library and applications from scratch, please do the 
 		
 3. Create, build, and execute the sample C test application
 
-	1. Navigate to ./test_app/ and create a file called *main.c* and add the following code (omitting line numbers):
+	1. Make a sub-directory for the test application by typing:
+	
+		`mkdir test_app`
+		
+	2. Navigate to ./test_app/ and create a file called *main.c* and add the following code (omitting line numbers):
 	
 		```
 		 1 #include <stdint.h>
