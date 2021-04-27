@@ -49,11 +49,19 @@ With the uniffi tools, the high-level wrapper generation process is as follows:
 5. Import the scaffolding code, the language-specific code, and the generated library into a native application
 
 
+## Installing uniffi
+Installing the uniffi tools is easily performed with *cargo*, as follows:
+
+```
+cargo install uniffi_bindgen
+```
 
 ## Creating the Rust Library
 To get started, open a terminal window and create a project directory that will contain each of the library and applications for this tutorial.  In the terminal, navigate to the project directory and create a new Rust library called *library*, as follows:
 
-`cargo new --lib library` 
+```
+cargo new --lib library
+``` 
 
 Next, navigate into the new *library* sub-directory just created, open Cargo.toml, and add the following:
 
@@ -101,9 +109,9 @@ In UDL, all of the API functions must be specified in the UDL file under the *na
 
 The scaffolding layer is set of code that exposes the library's API and serializes the specified data types as an enhanced FFI layer.  Generating the scaffolding layer is a simple process that is done at the command line by typing:
 
-`
+```
 uniffi-bindgen scaffolding ./src/library.uniffi.udl
-`
+```
 
 Executing this command will create a file called *./src/library.uniffi.uniffi.rs*. It is important to *not* modify this file.  However, viewing it in a code editor will show that ~136 lines of Rust code have been created. This code constitutes the FFI and contains numerous comments describing its operation.  The FFI routine correspondig to the API function, bool_inc_test( ), created above is found at line ~118 and is as follows:
 
@@ -133,7 +141,9 @@ While this code contains a valid FFI function and can be called, it is also in a
 
 Go to the library sub-directory and type:
 
-`cargo build`
+```
+cargo build
+```
 
 This will build the Rust library according to the settings in Cargo.toml.  If everything is successful, the output should be similar to:
 
@@ -273,7 +283,7 @@ Creating the Python test application is much simpler than the Swift version, bec
 
 1. Go to the tutorial main directory and create a sub-directory called *python_test_app* and navigate into it
 2. Copy the required library files into *python_test_app*
-	1. ./library/target/debug/libuniffi_library.dylib
+	1. ./library/target/debug/libuniffi_library.dylib (*Note:  currently, building the Rust library creates a filed called liblibrary.dylib.  As part of this copy step, the library should be renamed as libuniffi_library.dylib.  This descrepancy will likely be resolved in future versions of uniffi.*)
 	2. ./library/src/library.py
 3. Create the main Python application file (main.py) and add the following:
 
@@ -286,7 +296,9 @@ Creating the Python test application is much simpler than the Swift version, bec
 
 To execute main.py, type
 
-`python3 main.py`
+```
+python3 main.py
+```
 
 If *library.bool_inc_test( )* was successfully invoked, the following output should be displayed int the terminal:
 
