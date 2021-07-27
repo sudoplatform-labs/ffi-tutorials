@@ -50,27 +50,27 @@ typedef struct NativeRustError {
 // ⚠️ increment the version in all instance of UNIFFI_SHARED_HEADER_V1 in this file.                   ⚠️
 #endif // def UNIFFI_SHARED_H
   
-int8_t library_a699_bool_inc_test(
+int8_t library_12e5_bool_inc_test(
       int8_t value
     ,NativeRustError *_Nonnull out_err
     );
-RustBuffer ffi_library_a699_rustbuffer_alloc(
+RustBuffer ffi_library_12e5_rustbuffer_alloc(
       int32_t size
     ,NativeRustError *_Nonnull out_err
     );
-RustBuffer ffi_library_a699_rustbuffer_from_bytes(
+RustBuffer ffi_library_12e5_rustbuffer_from_bytes(
       ForeignBytes bytes
     ,NativeRustError *_Nonnull out_err
     );
-void ffi_library_a699_rustbuffer_free(
+void ffi_library_12e5_rustbuffer_free(
       RustBuffer buf
     ,NativeRustError *_Nonnull out_err
     );
-RustBuffer ffi_library_a699_rustbuffer_reserve(
+RustBuffer ffi_library_12e5_rustbuffer_reserve(
       RustBuffer buf,int32_t additional
     ,NativeRustError *_Nonnull out_err
     );
-void ffi_library_a699_string_free(
+void ffi_library_12e5_string_free(
       const char*_Nonnull cstr
     ,NativeRustError *_Nonnull out_err
     );

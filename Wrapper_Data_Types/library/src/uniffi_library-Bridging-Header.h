@@ -50,95 +50,95 @@ typedef struct NativeRustError {
 // ⚠️ increment the version in all instance of UNIFFI_SHARED_HEADER_V1 in this file.                   ⚠️
 #endif // def UNIFFI_SHARED_H
   
-int8_t library_c453_bool_inc_test(
+int8_t library_8bbb_bool_inc_test(
       int8_t value
     ,NativeRustError *_Nonnull out_err
     );
-int8_t library_c453_i8_inc_test(
+int8_t library_8bbb_i8_inc_test(
       int8_t value
     ,NativeRustError *_Nonnull out_err
     );
-int16_t library_c453_i16_inc_test(
+int16_t library_8bbb_i16_inc_test(
       int16_t value
     ,NativeRustError *_Nonnull out_err
     );
-int32_t library_c453_i32_inc_test(
+int32_t library_8bbb_i32_inc_test(
       int32_t value
     ,NativeRustError *_Nonnull out_err
     );
-int64_t library_c453_i64_inc_test(
+int64_t library_8bbb_i64_inc_test(
       int64_t value
     ,NativeRustError *_Nonnull out_err
     );
-uint8_t library_c453_u8_inc_test(
+uint8_t library_8bbb_u8_inc_test(
       uint8_t value
     ,NativeRustError *_Nonnull out_err
     );
-uint16_t library_c453_u16_inc_test(
+uint16_t library_8bbb_u16_inc_test(
       uint16_t value
     ,NativeRustError *_Nonnull out_err
     );
-uint32_t library_c453_u32_inc_test(
+uint32_t library_8bbb_u32_inc_test(
       uint32_t value
     ,NativeRustError *_Nonnull out_err
     );
-uint64_t library_c453_u64_inc_test(
+uint64_t library_8bbb_u64_inc_test(
       uint64_t value
     ,NativeRustError *_Nonnull out_err
     );
-float library_c453_float_inc_test(
+float library_8bbb_float_inc_test(
       float value
     ,NativeRustError *_Nonnull out_err
     );
-double library_c453_double_inc_test(
+double library_8bbb_double_inc_test(
       double value
     ,NativeRustError *_Nonnull out_err
     );
-RustBuffer library_c453_string_inc_test(
+RustBuffer library_8bbb_string_inc_test(
       RustBuffer value
     ,NativeRustError *_Nonnull out_err
     );
-RustBuffer library_c453_byref_inc_test(
+RustBuffer library_8bbb_byref_inc_test(
       RustBuffer value
     ,NativeRustError *_Nonnull out_err
     );
-RustBuffer library_c453_optional_type_inc_test(
+RustBuffer library_8bbb_optional_type_inc_test(
       RustBuffer value
     ,NativeRustError *_Nonnull out_err
     );
-RustBuffer library_c453_vector_inc_test(
+RustBuffer library_8bbb_vector_inc_test(
       RustBuffer value
     ,NativeRustError *_Nonnull out_err
     );
-RustBuffer library_c453_hash_map_inc_test(
+RustBuffer library_8bbb_hash_map_inc_test(
       RustBuffer value
     ,NativeRustError *_Nonnull out_err
     );
-void library_c453_void_inc_test(
+void library_8bbb_void_inc_test(
       int32_t value
     ,NativeRustError *_Nonnull out_err
     );
-uint64_t library_c453_error_inc_test(
+uint64_t library_8bbb_error_inc_test(
       uint64_t a,uint64_t b
     ,NativeRustError *_Nonnull out_err
     );
-RustBuffer ffi_library_c453_rustbuffer_alloc(
+RustBuffer ffi_library_8bbb_rustbuffer_alloc(
       int32_t size
     ,NativeRustError *_Nonnull out_err
     );
-RustBuffer ffi_library_c453_rustbuffer_from_bytes(
+RustBuffer ffi_library_8bbb_rustbuffer_from_bytes(
       ForeignBytes bytes
     ,NativeRustError *_Nonnull out_err
     );
-void ffi_library_c453_rustbuffer_free(
+void ffi_library_8bbb_rustbuffer_free(
       RustBuffer buf
     ,NativeRustError *_Nonnull out_err
     );
-RustBuffer ffi_library_c453_rustbuffer_reserve(
+RustBuffer ffi_library_8bbb_rustbuffer_reserve(
       RustBuffer buf,int32_t additional
     ,NativeRustError *_Nonnull out_err
     );
-void ffi_library_c453_string_free(
+void ffi_library_8bbb_string_free(
       const char*_Nonnull cstr
     ,NativeRustError *_Nonnull out_err
     );

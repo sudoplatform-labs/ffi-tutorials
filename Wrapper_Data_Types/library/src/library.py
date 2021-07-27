@@ -19,6 +19,7 @@ import ctypes
 import enum
 import struct
 import contextlib
+import datetime
 
 
 class RustBuffer(ctypes.Structure):
@@ -32,14 +33,14 @@ class RustBuffer(ctypes.Structure):
 
     @staticmethod
     def alloc(size):
-        return rust_call_with_error(InternalError, _UniFFILib.ffi_library_c453_rustbuffer_alloc, size)
+        return rust_call_with_error(InternalError, _UniFFILib.ffi_library_8bbb_rustbuffer_alloc, size)
 
     @staticmethod
     def reserve(rbuf, additional):
-        return rust_call_with_error(InternalError, _UniFFILib.ffi_library_c453_rustbuffer_reserve, rbuf, additional)
+        return rust_call_with_error(InternalError, _UniFFILib.ffi_library_8bbb_rustbuffer_reserve, rbuf, additional)
 
     def free(self):
-        return rust_call_with_error(InternalError, _UniFFILib.ffi_library_c453_rustbuffer_free, self)
+        return rust_call_with_error(InternalError, _UniFFILib.ffi_library_8bbb_rustbuffer_free, self)
 
     def __str__(self):
         return "RustBuffer(capacity={}, len={}, data={})".format(
@@ -83,30 +84,6 @@ class RustBuffer(ctypes.Structure):
     # easier for us to hide these implementation details from consumers, in the face
     # of python's free-for-all type system.
 
-    # The Record type Point.
-
-    @staticmethod
-    def allocFromRecordPoint(v):
-        with RustBuffer.allocWithBuilder() as builder:
-            builder.writeRecordPoint(v)
-            return builder.finalize()
-
-    def consumeIntoRecordPoint(self):
-        with self.consumeWithStream() as stream:
-            return stream.readRecordPoint()
-
-    # The Sequence<T> type for string.
-
-    @staticmethod
-    def allocFromSequencestring(v):
-        with RustBuffer.allocWithBuilder() as builder:
-            builder.writeSequencestring(v)
-            return builder.finalize()
-
-    def consumeIntoSequencestring(self):
-        with self.consumeWithStream() as stream:
-            return stream.readSequencestring()
-
     # The primitive String type.
 
     @staticmethod
@@ -119,6 +96,18 @@ class RustBuffer(ctypes.Structure):
         with self.consumeWithStream() as stream:
             return stream.read(stream.remaining()).decode("utf-8")
 
+    # The Record type Point.
+
+    @staticmethod
+    def allocFromRecordPoint(v):
+        with RustBuffer.allocWithBuilder() as builder:
+            builder.writeRecordPoint(v)
+            return builder.finalize()
+
+    def consumeIntoRecordPoint(self):
+        with self.consumeWithStream() as stream:
+            return stream.readRecordPoint()
+
     # The Optional<T> type for i32.
 
     @staticmethod
@@ -130,6 +119,18 @@ class RustBuffer(ctypes.Structure):
     def consumeIntoOptionali32(self):
         with self.consumeWithStream() as stream:
             return stream.readOptionali32()
+
+    # The Sequence<T> type for string.
+
+    @staticmethod
+    def allocFromSequencestring(v):
+        with RustBuffer.allocWithBuilder() as builder:
+            builder.writeSequencestring(v)
+            return builder.finalize()
+
+    def consumeIntoSequencestring(self):
+        with self.consumeWithStream() as stream:
+            return stream.readSequencestring()
 
     # The Map<T> type for i32.
 
@@ -186,17 +187,51 @@ class RustBufferStream(object):
     # implementation details from consumers, in the face of python's free-for-all type
     # system.
 
-    def readF64(self):
-        return self._unpack_from(8, ">d")
+    def readU8(self):
+        return self._unpack_from(1, ">B")
 
     def readI8(self):
         return self._unpack_from(1, ">b")
 
-    # The Error type ArithmeticError.
-    # Errors cannot currently be serialized, but we can produce a helpful error.
+    def readU16(self):
+        return self._unpack_from(1, ">H")
 
-    def readErrorArithmeticError(self):
-        raise InternalError("RustBufferStream.read not implemented yet for ErrorArithmeticError")
+    def readI16(self):
+        return self._unpack_from(2, ">h")
+
+    def readU32(self):
+        return self._unpack_from(4, ">I")
+
+    def readI32(self):
+        return self._unpack_from(4, ">i")
+
+    def readU64(self):
+        return self._unpack_from(8, ">Q")
+
+    def readI64(self):
+        return self._unpack_from(8, ">q")
+
+    def readF32(self):
+        v = self._unpack_from(4, ">f")
+        return v
+
+    def readF64(self):
+        return self._unpack_from(8, ">d")
+
+    def readBool(self):
+        v = self._unpack_from(1, ">b")
+        if v == 0:
+            return False
+        if v == 1:
+            return True
+        raise InternalError("Unexpected byte for Boolean type")
+
+    def readString(self):
+        size = self._unpack_from(4, ">i")
+        if size < 0:
+            raise InternalError("Unexpected negative string length")
+        utf8Bytes = self.read(size)
+        return utf8Bytes.decode("utf-8")
 
     # The Record type Point.
 
@@ -204,7 +239,20 @@ class RustBufferStream(object):
         return Point(
             self.readF64(),
             self.readF64()
-        )
+        )# This type cannot currently be serialized, but we can produce a helpful error.
+    def readErrorArithmeticError(self):
+        raise InternalError("RustBufferStream.read not implemented yet for ErrorArithmeticError")
+
+    # The Optional<T> type for i32.
+
+    def readOptionali32(self):
+        flag = self._unpack_from(1, ">b")
+        if flag == 0:
+            return None
+        elif flag == 1:
+            return self.readI32()
+        else:
+            raise InternalError("Unexpected flag byte for Optionali32")
 
     # The Sequence<T> type for string.
 
@@ -218,48 +266,6 @@ class RustBufferStream(object):
             count -= 1
         return items
 
-    def readF32(self):
-        v = self._unpack_from(4, ">f")
-        return v
-
-    def readU64(self):
-        return self._unpack_from(8, ">Q")
-
-    def readU8(self):
-        return self._unpack_from(1, ">B")
-
-    def readBool(self):
-        v = self._unpack_from(1, ">b")
-        if v == 0:
-            return False
-        if v == 1:
-            return True
-        raise InternalError("Unexpected byte for Boolean type")
-
-    def readU16(self):
-        return self._unpack_from(1, ">H")
-
-    def readI32(self):
-        return self._unpack_from(4, ">i")
-
-    def readString(self):
-        size = self._unpack_from(4, ">i")
-        if size < 0:
-            raise InternalError("Unexpected negative string length")
-        utf8Bytes = self.read(size)
-        return utf8Bytes.decode("utf-8")
-
-    # The Optional<T> type for i32.
-
-    def readOptionali32(self):
-        flag = self._unpack_from(1, ">b")
-        if flag == 0:
-            return None
-        elif flag == 1:
-            return self.readI32()
-        else:
-            raise InternalError("Unexpected flag byte for Optionali32")
-
     # The Map<T> type for i32.
 
     def readMapi32(self):
@@ -272,15 +278,6 @@ class RustBufferStream(object):
             items[key] = self.readI32()
             count -= 1
         return items
-
-    def readI64(self):
-        return self._unpack_from(8, ">q")
-
-    def readU32(self):
-        return self._unpack_from(4, ">I")
-
-    def readI16(self):
-        return self._unpack_from(2, ">h")
 
 class RustBufferBuilder(object):
     """Helper for structured writing of values into a RustBuffer."""
@@ -323,53 +320,52 @@ class RustBufferBuilder(object):
     # these implementation details from consumers, in the face of python's free-for-all
     # type system.
 
-    def writeF64(self, v):
-        self._pack_into(8, ">d", v)
+    def writeU8(self, v):
+        self._pack_into(1, ">B", v)
 
     def writeI8(self, v):
         self._pack_into(1, ">b", v)
 
-    # The Error type ArithmeticError.
-    # Errors cannot currently be serialized, but we can produce a helpful error.
+    def writeU16(self, v):
+        self._pack_into(1, ">H", v)
 
-    def writeErrorArithmeticError(self):
-        raise InternalError("RustBufferStream.write() not implemented yet for ErrorArithmeticError")
+    def writeI16(self, v):
+        self._pack_into(2, ">h", v)
 
-    # The Record type Point.
+    def writeU32(self, v):
+        self._pack_into(4, ">I", v)
 
-    def writeRecordPoint(self, v):
-        self.writeF64(v.x)
-        self.writeF64(v.y)
-
-    # The Sequence<T> type for string.
-
-    def writeSequencestring(self, items):
-        self._pack_into(4, ">i", len(items))
-        for item in items:
-            self.writeString(item)
-
-    def writeF32(self, v):
-        self._pack_into(4, ">f", v)
+    def writeI32(self, v):
+        self._pack_into(4, ">i", v)
 
     def writeU64(self, v):
         self._pack_into(8, ">Q", v)
 
-    def writeU8(self, v):
-        self._pack_into(1, ">B", v)
+    def writeI64(self, v):
+        self._pack_into(8, ">q", v)
+
+    def writeF32(self, v):
+        self._pack_into(4, ">f", v)
+
+    def writeF64(self, v):
+        self._pack_into(8, ">d", v)
 
     def writeBool(self, v):
         self._pack_into(1, ">b", 1 if v else 0)
-
-    def writeU16(self, v):
-        self._pack_into(1, ">H", v)
-
-    def writeI32(self, v):
-        self._pack_into(4, ">i", v)
 
     def writeString(self, v):
         utf8Bytes = v.encode("utf-8")
         self._pack_into(4, ">i", len(utf8Bytes))
         self.write(utf8Bytes)
+
+    # The Record type Point.
+
+    def writeRecordPoint(self, v):
+        self.writeF64(v.x)
+        self.writeF64(v.y)# This type cannot currently be serialized, but we can produce a helpful error.
+
+    def writeErrorArithmeticError(self, value):
+        raise InternalError("RustBufferStream.write() not implemented yet for ErrorArithmeticError")
 
     # The Optional<T> type for i32.
 
@@ -380,6 +376,13 @@ class RustBufferBuilder(object):
             self._pack_into(1, ">b", 1)
             self.writeI32(v)
 
+    # The Sequence<T> type for string.
+
+    def writeSequencestring(self, items):
+        self._pack_into(4, ">i", len(items))
+        for item in items:
+            self.writeString(item)
+
     # The Map<T> type for i32.
 
     def writeMapi32(self, items):
@@ -387,15 +390,6 @@ class RustBufferBuilder(object):
         for (k, v) in items.items():
             self.writeString(k)
             self.writeI32(v)
-
-    def writeI64(self, v):
-        self._pack_into(8, ">q", v)
-
-    def writeU32(self, v):
-        self._pack_into(4, ">I", v)
-
-    def writeI16(self, v):
-        self._pack_into(2, ">h", v)
 
 # Error definitions
 class RustError(ctypes.Structure):
@@ -405,7 +399,7 @@ class RustError(ctypes.Structure):
     ]
 
     def free(self):
-        rust_call_with_error(InternalError, _UniFFILib.ffi_library_c453_string_free, self.message)
+        rust_call_with_error(InternalError, _UniFFILib.ffi_library_8bbb_string_free, self.message)
 
     def __str__(self):
         return "RustError(code={}, message={})".format(
@@ -472,123 +466,123 @@ def loadIndirect():
 # This is an implementation detail which will be called internally by the public API.
 
 _UniFFILib = loadIndirect()
-_UniFFILib.library_c453_bool_inc_test.argtypes = (
+_UniFFILib.library_8bbb_bool_inc_test.argtypes = (
     ctypes.c_int8,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.library_c453_bool_inc_test.restype = ctypes.c_int8
-_UniFFILib.library_c453_i8_inc_test.argtypes = (
+_UniFFILib.library_8bbb_bool_inc_test.restype = ctypes.c_int8
+_UniFFILib.library_8bbb_i8_inc_test.argtypes = (
     ctypes.c_int8,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.library_c453_i8_inc_test.restype = ctypes.c_int8
-_UniFFILib.library_c453_i16_inc_test.argtypes = (
+_UniFFILib.library_8bbb_i8_inc_test.restype = ctypes.c_int8
+_UniFFILib.library_8bbb_i16_inc_test.argtypes = (
     ctypes.c_int16,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.library_c453_i16_inc_test.restype = ctypes.c_int16
-_UniFFILib.library_c453_i32_inc_test.argtypes = (
+_UniFFILib.library_8bbb_i16_inc_test.restype = ctypes.c_int16
+_UniFFILib.library_8bbb_i32_inc_test.argtypes = (
     ctypes.c_int32,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.library_c453_i32_inc_test.restype = ctypes.c_int32
-_UniFFILib.library_c453_i64_inc_test.argtypes = (
+_UniFFILib.library_8bbb_i32_inc_test.restype = ctypes.c_int32
+_UniFFILib.library_8bbb_i64_inc_test.argtypes = (
     ctypes.c_int64,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.library_c453_i64_inc_test.restype = ctypes.c_int64
-_UniFFILib.library_c453_u8_inc_test.argtypes = (
+_UniFFILib.library_8bbb_i64_inc_test.restype = ctypes.c_int64
+_UniFFILib.library_8bbb_u8_inc_test.argtypes = (
     ctypes.c_uint8,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.library_c453_u8_inc_test.restype = ctypes.c_uint8
-_UniFFILib.library_c453_u16_inc_test.argtypes = (
+_UniFFILib.library_8bbb_u8_inc_test.restype = ctypes.c_uint8
+_UniFFILib.library_8bbb_u16_inc_test.argtypes = (
     ctypes.c_uint16,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.library_c453_u16_inc_test.restype = ctypes.c_uint16
-_UniFFILib.library_c453_u32_inc_test.argtypes = (
+_UniFFILib.library_8bbb_u16_inc_test.restype = ctypes.c_uint16
+_UniFFILib.library_8bbb_u32_inc_test.argtypes = (
     ctypes.c_uint32,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.library_c453_u32_inc_test.restype = ctypes.c_uint32
-_UniFFILib.library_c453_u64_inc_test.argtypes = (
+_UniFFILib.library_8bbb_u32_inc_test.restype = ctypes.c_uint32
+_UniFFILib.library_8bbb_u64_inc_test.argtypes = (
     ctypes.c_uint64,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.library_c453_u64_inc_test.restype = ctypes.c_uint64
-_UniFFILib.library_c453_float_inc_test.argtypes = (
+_UniFFILib.library_8bbb_u64_inc_test.restype = ctypes.c_uint64
+_UniFFILib.library_8bbb_float_inc_test.argtypes = (
     ctypes.c_float,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.library_c453_float_inc_test.restype = ctypes.c_float
-_UniFFILib.library_c453_double_inc_test.argtypes = (
+_UniFFILib.library_8bbb_float_inc_test.restype = ctypes.c_float
+_UniFFILib.library_8bbb_double_inc_test.argtypes = (
     ctypes.c_double,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.library_c453_double_inc_test.restype = ctypes.c_double
-_UniFFILib.library_c453_string_inc_test.argtypes = (
+_UniFFILib.library_8bbb_double_inc_test.restype = ctypes.c_double
+_UniFFILib.library_8bbb_string_inc_test.argtypes = (
     RustBuffer,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.library_c453_string_inc_test.restype = RustBuffer
-_UniFFILib.library_c453_byref_inc_test.argtypes = (
+_UniFFILib.library_8bbb_string_inc_test.restype = RustBuffer
+_UniFFILib.library_8bbb_byref_inc_test.argtypes = (
     RustBuffer,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.library_c453_byref_inc_test.restype = RustBuffer
-_UniFFILib.library_c453_optional_type_inc_test.argtypes = (
+_UniFFILib.library_8bbb_byref_inc_test.restype = RustBuffer
+_UniFFILib.library_8bbb_optional_type_inc_test.argtypes = (
     RustBuffer,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.library_c453_optional_type_inc_test.restype = RustBuffer
-_UniFFILib.library_c453_vector_inc_test.argtypes = (
+_UniFFILib.library_8bbb_optional_type_inc_test.restype = RustBuffer
+_UniFFILib.library_8bbb_vector_inc_test.argtypes = (
     RustBuffer,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.library_c453_vector_inc_test.restype = RustBuffer
-_UniFFILib.library_c453_hash_map_inc_test.argtypes = (
+_UniFFILib.library_8bbb_vector_inc_test.restype = RustBuffer
+_UniFFILib.library_8bbb_hash_map_inc_test.argtypes = (
     RustBuffer,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.library_c453_hash_map_inc_test.restype = RustBuffer
-_UniFFILib.library_c453_void_inc_test.argtypes = (
+_UniFFILib.library_8bbb_hash_map_inc_test.restype = RustBuffer
+_UniFFILib.library_8bbb_void_inc_test.argtypes = (
     ctypes.c_int32,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.library_c453_void_inc_test.restype = None
-_UniFFILib.library_c453_error_inc_test.argtypes = (
+_UniFFILib.library_8bbb_void_inc_test.restype = None
+_UniFFILib.library_8bbb_error_inc_test.argtypes = (
     ctypes.c_uint64,
     ctypes.c_uint64,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.library_c453_error_inc_test.restype = ctypes.c_uint64
-_UniFFILib.ffi_library_c453_rustbuffer_alloc.argtypes = (
+_UniFFILib.library_8bbb_error_inc_test.restype = ctypes.c_uint64
+_UniFFILib.ffi_library_8bbb_rustbuffer_alloc.argtypes = (
     ctypes.c_int32,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.ffi_library_c453_rustbuffer_alloc.restype = RustBuffer
-_UniFFILib.ffi_library_c453_rustbuffer_from_bytes.argtypes = (
+_UniFFILib.ffi_library_8bbb_rustbuffer_alloc.restype = RustBuffer
+_UniFFILib.ffi_library_8bbb_rustbuffer_from_bytes.argtypes = (
     ForeignBytes,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.ffi_library_c453_rustbuffer_from_bytes.restype = RustBuffer
-_UniFFILib.ffi_library_c453_rustbuffer_free.argtypes = (
+_UniFFILib.ffi_library_8bbb_rustbuffer_from_bytes.restype = RustBuffer
+_UniFFILib.ffi_library_8bbb_rustbuffer_free.argtypes = (
     RustBuffer,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.ffi_library_c453_rustbuffer_free.restype = None
-_UniFFILib.ffi_library_c453_rustbuffer_reserve.argtypes = (
+_UniFFILib.ffi_library_8bbb_rustbuffer_free.restype = None
+_UniFFILib.ffi_library_8bbb_rustbuffer_reserve.argtypes = (
     RustBuffer,
     ctypes.c_int32,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.ffi_library_c453_rustbuffer_reserve.restype = RustBuffer
-_UniFFILib.ffi_library_c453_string_free.argtypes = (
-    ctypes.c_voidp,
+_UniFFILib.ffi_library_8bbb_rustbuffer_reserve.restype = RustBuffer
+_UniFFILib.ffi_library_8bbb_string_free.argtypes = (
+    ctypes.c_void_p,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.ffi_library_c453_string_free.restype = None
+_UniFFILib.ffi_library_8bbb_string_free.restype = None
 
 # Public interface members begin here.
 
@@ -614,7 +608,7 @@ class Point(object):
 
 def bool_inc_test(value):
     value = bool(value)
-    _retval = rust_call_with_error(InternalError,_UniFFILib.library_c453_bool_inc_test,(1 if value else 0))
+    _retval = rust_call_with_error(InternalError,_UniFFILib.library_8bbb_bool_inc_test,(1 if value else 0))
     return (True if _retval else False)
 
 
@@ -622,7 +616,7 @@ def bool_inc_test(value):
 
 def i8_inc_test(value):
     value = int(value)
-    _retval = rust_call_with_error(InternalError,_UniFFILib.library_c453_i8_inc_test,value)
+    _retval = rust_call_with_error(InternalError,_UniFFILib.library_8bbb_i8_inc_test,value)
     return int(_retval)
 
 
@@ -630,7 +624,7 @@ def i8_inc_test(value):
 
 def i16_inc_test(value):
     value = int(value)
-    _retval = rust_call_with_error(InternalError,_UniFFILib.library_c453_i16_inc_test,value)
+    _retval = rust_call_with_error(InternalError,_UniFFILib.library_8bbb_i16_inc_test,value)
     return int(_retval)
 
 
@@ -638,7 +632,7 @@ def i16_inc_test(value):
 
 def i32_inc_test(value):
     value = int(value)
-    _retval = rust_call_with_error(InternalError,_UniFFILib.library_c453_i32_inc_test,value)
+    _retval = rust_call_with_error(InternalError,_UniFFILib.library_8bbb_i32_inc_test,value)
     return int(_retval)
 
 
@@ -646,7 +640,7 @@ def i32_inc_test(value):
 
 def i64_inc_test(value):
     value = int(value)
-    _retval = rust_call_with_error(InternalError,_UniFFILib.library_c453_i64_inc_test,value)
+    _retval = rust_call_with_error(InternalError,_UniFFILib.library_8bbb_i64_inc_test,value)
     return int(_retval)
 
 
@@ -654,7 +648,7 @@ def i64_inc_test(value):
 
 def u8_inc_test(value):
     value = int(value)
-    _retval = rust_call_with_error(InternalError,_UniFFILib.library_c453_u8_inc_test,value)
+    _retval = rust_call_with_error(InternalError,_UniFFILib.library_8bbb_u8_inc_test,value)
     return int(_retval)
 
 
@@ -662,7 +656,7 @@ def u8_inc_test(value):
 
 def u16_inc_test(value):
     value = int(value)
-    _retval = rust_call_with_error(InternalError,_UniFFILib.library_c453_u16_inc_test,value)
+    _retval = rust_call_with_error(InternalError,_UniFFILib.library_8bbb_u16_inc_test,value)
     return int(_retval)
 
 
@@ -670,7 +664,7 @@ def u16_inc_test(value):
 
 def u32_inc_test(value):
     value = int(value)
-    _retval = rust_call_with_error(InternalError,_UniFFILib.library_c453_u32_inc_test,value)
+    _retval = rust_call_with_error(InternalError,_UniFFILib.library_8bbb_u32_inc_test,value)
     return int(_retval)
 
 
@@ -678,7 +672,7 @@ def u32_inc_test(value):
 
 def u64_inc_test(value):
     value = int(value)
-    _retval = rust_call_with_error(InternalError,_UniFFILib.library_c453_u64_inc_test,value)
+    _retval = rust_call_with_error(InternalError,_UniFFILib.library_8bbb_u64_inc_test,value)
     return int(_retval)
 
 
@@ -686,7 +680,7 @@ def u64_inc_test(value):
 
 def float_inc_test(value):
     value = float(value)
-    _retval = rust_call_with_error(InternalError,_UniFFILib.library_c453_float_inc_test,value)
+    _retval = rust_call_with_error(InternalError,_UniFFILib.library_8bbb_float_inc_test,value)
     return float(_retval)
 
 
@@ -694,7 +688,7 @@ def float_inc_test(value):
 
 def double_inc_test(value):
     value = float(value)
-    _retval = rust_call_with_error(InternalError,_UniFFILib.library_c453_double_inc_test,value)
+    _retval = rust_call_with_error(InternalError,_UniFFILib.library_8bbb_double_inc_test,value)
     return float(_retval)
 
 
@@ -702,7 +696,7 @@ def double_inc_test(value):
 
 def string_inc_test(value):
     value = value
-    _retval = rust_call_with_error(InternalError,_UniFFILib.library_c453_string_inc_test,RustBuffer.allocFromString(value))
+    _retval = rust_call_with_error(InternalError,_UniFFILib.library_8bbb_string_inc_test,RustBuffer.allocFromString(value))
     return _retval.consumeIntoString()
 
 
@@ -710,7 +704,7 @@ def string_inc_test(value):
 
 def byref_inc_test(value):
     value = value
-    _retval = rust_call_with_error(InternalError,_UniFFILib.library_c453_byref_inc_test,RustBuffer.allocFromRecordPoint(value))
+    _retval = rust_call_with_error(InternalError,_UniFFILib.library_8bbb_byref_inc_test,RustBuffer.allocFromRecordPoint(value))
     return _retval.consumeIntoRecordPoint()
 
 
@@ -718,7 +712,7 @@ def byref_inc_test(value):
 
 def optional_type_inc_test(value):
     value = (None if value is None else int(value))
-    _retval = rust_call_with_error(InternalError,_UniFFILib.library_c453_optional_type_inc_test,RustBuffer.allocFromOptionali32(value))
+    _retval = rust_call_with_error(InternalError,_UniFFILib.library_8bbb_optional_type_inc_test,RustBuffer.allocFromOptionali32(value))
     return _retval.consumeIntoOptionali32()
 
 
@@ -726,7 +720,7 @@ def optional_type_inc_test(value):
 
 def vector_inc_test(value):
     value = list(x for x in value)
-    _retval = rust_call_with_error(InternalError,_UniFFILib.library_c453_vector_inc_test,RustBuffer.allocFromSequencestring(value))
+    _retval = rust_call_with_error(InternalError,_UniFFILib.library_8bbb_vector_inc_test,RustBuffer.allocFromSequencestring(value))
     return _retval.consumeIntoSequencestring()
 
 
@@ -734,7 +728,7 @@ def vector_inc_test(value):
 
 def hash_map_inc_test(value):
     value = dict((k,int(v)) for (k, v) in value.items())
-    _retval = rust_call_with_error(InternalError,_UniFFILib.library_c453_hash_map_inc_test,RustBuffer.allocFromMapi32(value))
+    _retval = rust_call_with_error(InternalError,_UniFFILib.library_8bbb_hash_map_inc_test,RustBuffer.allocFromMapi32(value))
     return _retval.consumeIntoMapi32()
 
 
@@ -742,7 +736,7 @@ def hash_map_inc_test(value):
 
 def void_inc_test(value):
     value = int(value)
-    rust_call_with_error(InternalError,_UniFFILib.library_c453_void_inc_test,value)
+    rust_call_with_error(InternalError,_UniFFILib.library_8bbb_void_inc_test,value)
 
 
 
@@ -750,7 +744,7 @@ def void_inc_test(value):
 def error_inc_test(a,b):
     a = int(a)
     b = int(b)
-    _retval = rust_call_with_error(ArithmeticError,_UniFFILib.library_c453_error_inc_test,a,b)
+    _retval = rust_call_with_error(ArithmeticError,_UniFFILib.library_8bbb_error_inc_test,a,b)
     return int(_retval)
 
 

@@ -19,6 +19,7 @@ import ctypes
 import enum
 import struct
 import contextlib
+import datetime
 
 
 class RustBuffer(ctypes.Structure):
@@ -32,14 +33,14 @@ class RustBuffer(ctypes.Structure):
 
     @staticmethod
     def alloc(size):
-        return rust_call_with_error(InternalError, _UniFFILib.ffi_library_a699_rustbuffer_alloc, size)
+        return rust_call_with_error(InternalError, _UniFFILib.ffi_library_12e5_rustbuffer_alloc, size)
 
     @staticmethod
     def reserve(rbuf, additional):
-        return rust_call_with_error(InternalError, _UniFFILib.ffi_library_a699_rustbuffer_reserve, rbuf, additional)
+        return rust_call_with_error(InternalError, _UniFFILib.ffi_library_12e5_rustbuffer_reserve, rbuf, additional)
 
     def free(self):
-        return rust_call_with_error(InternalError, _UniFFILib.ffi_library_a699_rustbuffer_free, self)
+        return rust_call_with_error(InternalError, _UniFFILib.ffi_library_12e5_rustbuffer_free, self)
 
     def __str__(self):
         return "RustBuffer(capacity={}, len={}, data={})".format(
@@ -186,7 +187,7 @@ class RustError(ctypes.Structure):
     ]
 
     def free(self):
-        rust_call_with_error(InternalError, _UniFFILib.ffi_library_a699_string_free, self.message)
+        rust_call_with_error(InternalError, _UniFFILib.ffi_library_12e5_string_free, self.message)
 
     def __str__(self):
         return "RustError(code={}, message={})".format(
@@ -236,46 +237,43 @@ def loadIndirect():
             os.path.dirname(__file__),
             "{}.dll",
         )
-        
-    print('*** ' + libname)
-        
     return getattr(ctypes.cdll, libname.format("uniffi_library"))
 
 # A ctypes library to expose the extern-C FFI definitions.
 # This is an implementation detail which will be called internally by the public API.
 
 _UniFFILib = loadIndirect()
-_UniFFILib.library_a699_bool_inc_test.argtypes = (
+_UniFFILib.library_12e5_bool_inc_test.argtypes = (
     ctypes.c_int8,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.library_a699_bool_inc_test.restype = ctypes.c_int8
-_UniFFILib.ffi_library_a699_rustbuffer_alloc.argtypes = (
+_UniFFILib.library_12e5_bool_inc_test.restype = ctypes.c_int8
+_UniFFILib.ffi_library_12e5_rustbuffer_alloc.argtypes = (
     ctypes.c_int32,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.ffi_library_a699_rustbuffer_alloc.restype = RustBuffer
-_UniFFILib.ffi_library_a699_rustbuffer_from_bytes.argtypes = (
+_UniFFILib.ffi_library_12e5_rustbuffer_alloc.restype = RustBuffer
+_UniFFILib.ffi_library_12e5_rustbuffer_from_bytes.argtypes = (
     ForeignBytes,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.ffi_library_a699_rustbuffer_from_bytes.restype = RustBuffer
-_UniFFILib.ffi_library_a699_rustbuffer_free.argtypes = (
+_UniFFILib.ffi_library_12e5_rustbuffer_from_bytes.restype = RustBuffer
+_UniFFILib.ffi_library_12e5_rustbuffer_free.argtypes = (
     RustBuffer,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.ffi_library_a699_rustbuffer_free.restype = None
-_UniFFILib.ffi_library_a699_rustbuffer_reserve.argtypes = (
+_UniFFILib.ffi_library_12e5_rustbuffer_free.restype = None
+_UniFFILib.ffi_library_12e5_rustbuffer_reserve.argtypes = (
     RustBuffer,
     ctypes.c_int32,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.ffi_library_a699_rustbuffer_reserve.restype = RustBuffer
-_UniFFILib.ffi_library_a699_string_free.argtypes = (
-    ctypes.c_voidp,
+_UniFFILib.ffi_library_12e5_rustbuffer_reserve.restype = RustBuffer
+_UniFFILib.ffi_library_12e5_string_free.argtypes = (
+    ctypes.c_void_p,
     ctypes.POINTER(RustError),
 )
-_UniFFILib.ffi_library_a699_string_free.restype = None
+_UniFFILib.ffi_library_12e5_string_free.restype = None
 
 # Public interface members begin here.
 
@@ -286,7 +284,7 @@ _UniFFILib.ffi_library_a699_string_free.restype = None
 
 def bool_inc_test(value):
     value = bool(value)
-    _retval = rust_call_with_error(InternalError,_UniFFILib.library_a699_bool_inc_test,(1 if value else 0))
+    _retval = rust_call_with_error(InternalError,_UniFFILib.library_12e5_bool_inc_test,(1 if value else 0))
     return (True if _retval else False)
 
 

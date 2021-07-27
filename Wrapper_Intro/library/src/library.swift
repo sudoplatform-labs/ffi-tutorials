@@ -3,12 +3,12 @@
 
 import Foundation
 
-fileprivate extension RustBuffer {
+private extension RustBuffer {
     // Allocate a new buffer, copying the contents of a `UInt8` array.
     init(bytes: [UInt8]) {
         let rbuf = bytes.withUnsafeBufferPointer { ptr in
             try! rustCall(UniffiInternalError.unknown("RustBuffer.init")) { err in
-                ffi_library_a699_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), err)
+                ffi_library_12e5_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), err)
             }
         }
         // Ref https://github.com/mozilla/uniffi-rs/issues/334 for the extra "padding" arg.
@@ -19,21 +19,22 @@ fileprivate extension RustBuffer {
     // The buffer must not be used after this is called.
     func deallocate() {
         try! rustCall(UniffiInternalError.unknown("RustBuffer.deallocate")) { err in
-            ffi_library_a699_rustbuffer_free(self, err)
+            ffi_library_12e5_rustbuffer_free(self, err)
         }
     }
 }
 
-fileprivate extension ForeignBytes {
+private extension ForeignBytes {
     init(bufferPointer: UnsafeBufferPointer<UInt8>) {
         // Ref https://github.com/mozilla/uniffi-rs/issues/334 for the extra "padding" args.
         self.init(len: Int32(bufferPointer.count), data: bufferPointer.baseAddress, padding: 0, padding2: 0)
     }
 }
+
 // Helper classes/extensions that don't change.
 // Someday, this will be in a libray of its own.
 
-fileprivate extension Data {
+private extension Data {
     init(rustBuffer: RustBuffer) {
         // TODO: This copies the buffer. Can we read directly from a
         // Rust buffer?
@@ -42,20 +43,20 @@ fileprivate extension Data {
 }
 
 // A helper class to read values out of a byte buffer.
-fileprivate class Reader {
+private class Reader {
     let data: Data
     var offset: Data.Index
 
     init(data: Data) {
         self.data = data
-        self.offset = 0
+        offset = 0
     }
 
     // Reads an integer at the current offset, in big-endian order, and advances
     // the offset on success. Throws if reading the integer would move the
     // offset past the end of the buffer.
     func readInt<T: FixedWidthInteger>() throws -> T {
-        let range = offset..<offset + MemoryLayout<T>.size
+        let range = offset ..< offset + MemoryLayout<T>.size
         guard data.count >= range.upperBound else {
             throw UniffiInternalError.bufferOverflow
         }
@@ -65,22 +66,22 @@ fileprivate class Reader {
             return value as! T
         }
         var value: T = 0
-        let _ = withUnsafeMutableBytes(of: &value, { data.copyBytes(to: $0, from: range)})
+        _ = withUnsafeMutableBytes(of: &value) { data.copyBytes(to: $0, from: range) }
         offset = range.upperBound
         return value.bigEndian
     }
 
     // Reads an arbitrary number of bytes, to be used to read
     // raw bytes, this is useful when lifting strings
-    func readBytes(count: Int) throws -> Array<UInt8> {
-        let range = offset..<(offset+count)
+    func readBytes(count: Int) throws -> [UInt8] {
+        let range = offset ..< (offset + count)
         guard data.count >= range.upperBound else {
             throw UniffiInternalError.bufferOverflow
         }
         var value = [UInt8](repeating: 0, count: count)
-        value.withUnsafeMutableBufferPointer({ buffer in
+        value.withUnsafeMutableBufferPointer { buffer in
             data.copyBytes(to: buffer, from: range)
-        })
+        }
         offset = range.upperBound
         return value
     }
@@ -105,13 +106,13 @@ fileprivate class Reader {
 }
 
 // A helper class to write values into a byte buffer.
-fileprivate class Writer {
+private class Writer {
     var bytes: [UInt8]
     var offset: Array<UInt8>.Index
 
     init() {
-        self.bytes = []
-        self.offset = 0
+        bytes = []
+        offset = 0
     }
 
     func writeBytes<S>(_ byteArr: S) where S: Sequence, S.Element == UInt8 {
@@ -138,57 +139,56 @@ fileprivate class Writer {
     }
 }
 
-
 // Types conforming to `Serializable` can be read and written in a bytebuffer.
-fileprivate protocol Serializable {
+private protocol Serializable {
     func write(into: Writer)
     static func read(from: Reader) throws -> Self
 }
 
 // Types confirming to `ViaFfi` can be transferred back-and-for over the FFI.
 // This is analogous to the Rust trait of the same name.
-fileprivate protocol ViaFfi: Serializable {
+private protocol ViaFfi: Serializable {
     associatedtype FfiType
     static func lift(_ v: FfiType) throws -> Self
     func lower() -> FfiType
 }
 
 // Types conforming to `Primitive` pass themselves directly over the FFI.
-fileprivate protocol Primitive {}
+private protocol Primitive {}
 
-extension Primitive {
-    fileprivate typealias FfiType = Self
+private extension Primitive {
+    typealias FfiType = Self
 
-    fileprivate static func lift(_ v: Self) throws -> Self {
+    static func lift(_ v: Self) throws -> Self {
         return v
     }
 
-    fileprivate func lower() -> Self {
+    func lower() -> Self {
         return self
     }
 }
 
 // Types conforming to `ViaFfiUsingByteBuffer` lift and lower into a bytebuffer.
 // Use this for complex types where it's hard to write a custom lift/lower.
-fileprivate protocol ViaFfiUsingByteBuffer: Serializable {}
+private protocol ViaFfiUsingByteBuffer: Serializable {}
 
-extension ViaFfiUsingByteBuffer {
-    fileprivate typealias FfiType = RustBuffer
+private extension ViaFfiUsingByteBuffer {
+    typealias FfiType = RustBuffer
 
-    fileprivate static func lift(_ buf: RustBuffer) throws -> Self {
-      let reader = Reader(data: Data(rustBuffer: buf))
-      let value = try Self.read(from: reader)
-      if reader.hasRemaining() {
-          throw UniffiInternalError.incompleteData
-      }
-      buf.deallocate()
-      return value
+    static func lift(_ buf: RustBuffer) throws -> Self {
+        let reader = Reader(data: Data(rustBuffer: buf))
+        let value = try Self.read(from: reader)
+        if reader.hasRemaining() {
+            throw UniffiInternalError.incompleteData
+        }
+        buf.deallocate()
+        return value
     }
 
-    fileprivate func lower() -> RustBuffer {
-      let writer = Writer()
-      self.write(into: writer)
-      return RustBuffer(bytes: writer.bytes)
+    func lower() -> RustBuffer {
+        let writer = Writer()
+        write(into: writer)
+        return RustBuffer(bytes: writer.bytes)
     }
 }
 
@@ -200,7 +200,7 @@ extension String: ViaFfi {
     fileprivate static func lift(_ v: FfiType) throws -> Self {
         defer {
             try! rustCall(UniffiInternalError.unknown("String.lift")) { err in
-                ffi_library_a699_rustbuffer_free(v, err)
+                ffi_library_12e5_rustbuffer_free(v, err)
             }
         }
         if v.data == nil {
@@ -211,14 +211,14 @@ extension String: ViaFfi {
     }
 
     fileprivate func lower() -> FfiType {
-        return self.utf8CString.withUnsafeBufferPointer { ptr in
+        return utf8CString.withUnsafeBufferPointer { ptr in
             // The swift string gives us int8_t, we want uint8_t.
             ptr.withMemoryRebound(to: UInt8.self) { ptr in
                 // The swift string gives us a trailing null byte, we don't want it.
                 let buf = UnsafeBufferPointer(rebasing: ptr.prefix(upTo: ptr.count - 1))
                 let bytes = ForeignBytes(bufferPointer: buf)
                 return try! rustCall(UniffiInternalError.unknown("String.lower")) { err in
-                    ffi_library_a699_rustbuffer_from_bytes(bytes, err)
+                    ffi_library_12e5_rustbuffer_from_bytes(bytes, err)
                 }
             }
         }
@@ -230,22 +230,21 @@ extension String: ViaFfi {
     }
 
     fileprivate func write(into buf: Writer) {
-        let len = Int32(self.utf8.count)
+        let len = Int32(utf8.count)
         buf.writeInt(len)
-        buf.writeBytes(self.utf8)
+        buf.writeBytes(utf8)
     }
 }
-
 
 extension Bool: ViaFfi {
     fileprivate typealias FfiType = Int8
 
     fileprivate static func read(from buf: Reader) throws -> Bool {
-        return try self.lift(buf.readInt())
+        return try lift(buf.readInt())
     }
 
     fileprivate func write(into buf: Writer) {
-        buf.writeInt(self.lower())
+        buf.writeInt(lower())
     }
 
     fileprivate static func lift(_ v: Int8) throws -> Bool {
@@ -257,103 +256,175 @@ extension Bool: ViaFfi {
     }
 }
 
-extension UInt8: Primitive, ViaFfi {
-    fileprivate static func read(from buf: Reader) throws -> UInt8 {
-        return try self.lift(buf.readInt())
+extension Date: ViaFfiUsingByteBuffer, ViaFfi {
+    fileprivate static func read(from buf: Reader) throws -> Self {
+        let seconds: Int64 = try buf.readInt()
+        let nanoseconds: UInt32 = try buf.readInt()
+        if seconds >= 0 {
+            let delta = Double(seconds) + (Double(nanoseconds) / 1.0e9)
+            return Date(timeIntervalSince1970: delta)
+        } else {
+            let delta = Double(seconds) - (Double(nanoseconds) / 1.0e9)
+            return Date(timeIntervalSince1970: delta)
+        }
     }
 
     fileprivate func write(into buf: Writer) {
-        buf.writeInt(self.lower())
+        var delta = timeIntervalSince1970
+        var sign: Int64 = 1
+        if delta < 0 {
+            // The nanoseconds portion of the epoch offset must always be
+            // positive, to simplify the calculation we will use the absolute
+            // value of the offset.
+            sign = -1
+            delta = -delta
+        }
+        if delta.rounded(.down) > Double(Int64.max) {
+            fatalError("Timestamp overflow, exceeds max bounds supported by Uniffi")
+        }
+        let seconds = Int64(delta)
+        let nanoseconds = UInt32((delta - Double(seconds)) * 1.0e9)
+        buf.writeInt(sign * seconds)
+        buf.writeInt(nanoseconds)
+    }
+}
+
+private extension TimeInterval {
+    static func liftDuration(_ buf: RustBuffer) throws -> Self {
+        let reader = Reader(data: Data(rustBuffer: buf))
+        let value = try Self.readDuration(from: reader)
+        if reader.hasRemaining() {
+            throw UniffiInternalError.incompleteData
+        }
+        buf.deallocate()
+        return value
+    }
+
+    func lowerDuration() -> RustBuffer {
+        let writer = Writer()
+        writeDuration(into: writer)
+        return RustBuffer(bytes: writer.bytes)
+    }
+
+    static func readDuration(from buf: Reader) throws -> Self {
+        let seconds: UInt64 = try buf.readInt()
+        let nanoseconds: UInt32 = try buf.readInt()
+        return Double(seconds) + (Double(nanoseconds) / 1.0e9)
+    }
+
+    func writeDuration(into buf: Writer) {
+        if rounded(.down) > Double(Int64.max) {
+            fatalError("Duration overflow, exceeds max bounds supported by Uniffi")
+        }
+
+        if self < 0 {
+            fatalError("Invalid duration, must be non-negative")
+        }
+
+        let seconds = UInt64(self)
+        let nanoseconds = UInt32((self - Double(seconds)) * 1.0e9)
+        buf.writeInt(seconds)
+        buf.writeInt(nanoseconds)
+    }
+}
+
+extension UInt8: Primitive, ViaFfi {
+    fileprivate static func read(from buf: Reader) throws -> UInt8 {
+        return try lift(buf.readInt())
+    }
+
+    fileprivate func write(into buf: Writer) {
+        buf.writeInt(lower())
     }
 }
 
 extension Int8: Primitive, ViaFfi {
     fileprivate static func read(from buf: Reader) throws -> Int8 {
-        return try self.lift(buf.readInt())
+        return try lift(buf.readInt())
     }
 
     fileprivate func write(into buf: Writer) {
-        buf.writeInt(self.lower())
+        buf.writeInt(lower())
     }
 }
 
 extension UInt16: Primitive, ViaFfi {
     fileprivate static func read(from buf: Reader) throws -> UInt16 {
-        return try self.lift(buf.readInt())
+        return try lift(buf.readInt())
     }
 
     fileprivate func write(into buf: Writer) {
-        buf.writeInt(self.lower())
+        buf.writeInt(lower())
     }
 }
 
 extension Int16: Primitive, ViaFfi {
     fileprivate static func read(from buf: Reader) throws -> Int16 {
-        return try self.lift(buf.readInt())
+        return try lift(buf.readInt())
     }
 
     fileprivate func write(into buf: Writer) {
-        buf.writeInt(self.lower())
+        buf.writeInt(lower())
     }
 }
 
 extension UInt32: Primitive, ViaFfi {
     fileprivate static func read(from buf: Reader) throws -> UInt32 {
-        return try self.lift(buf.readInt())
+        return try lift(buf.readInt())
     }
 
     fileprivate func write(into buf: Writer) {
-        buf.writeInt(self.lower())
+        buf.writeInt(lower())
     }
 }
 
 extension Int32: Primitive, ViaFfi {
     fileprivate static func read(from buf: Reader) throws -> Int32 {
-        return try self.lift(buf.readInt())
+        return try lift(buf.readInt())
     }
 
     fileprivate func write(into buf: Writer) {
-        buf.writeInt(self.lower())
+        buf.writeInt(lower())
     }
 }
 
 extension UInt64: Primitive, ViaFfi {
     fileprivate static func read(from buf: Reader) throws -> UInt64 {
-        return try self.lift(buf.readInt())
+        return try lift(buf.readInt())
     }
 
     fileprivate func write(into buf: Writer) {
-        buf.writeInt(self.lower())
+        buf.writeInt(lower())
     }
 }
 
 extension Int64: Primitive, ViaFfi {
     fileprivate static func read(from buf: Reader) throws -> Int64 {
-        return try self.lift(buf.readInt())
+        return try lift(buf.readInt())
     }
 
     fileprivate func write(into buf: Writer) {
-        buf.writeInt(self.lower())
+        buf.writeInt(lower())
     }
 }
 
 extension Float: Primitive, ViaFfi {
     fileprivate static func read(from buf: Reader) throws -> Float {
-        return try self.lift(buf.readFloat())
+        return try lift(buf.readFloat())
     }
 
     fileprivate func write(into buf: Writer) {
-        buf.writeFloat(self.lower())
+        buf.writeFloat(lower())
     }
 }
 
 extension Double: Primitive, ViaFfi {
     fileprivate static func read(from buf: Reader) throws -> Double {
-        return try self.lift(buf.readDouble())
+        return try lift(buf.readDouble())
     }
 
     fileprivate func write(into buf: Writer) {
-        buf.writeDouble(self.lower())
+        buf.writeDouble(lower())
     }
 }
 
@@ -381,14 +452,14 @@ extension Array: ViaFfiUsingByteBuffer, ViaFfi, Serializable where Element: Seri
         let len: Int32 = try buf.readInt()
         var seq = [Element]()
         seq.reserveCapacity(Int(len))
-        for _ in 0..<len {
+        for _ in 0 ..< len {
             seq.append(try Element.read(from: buf))
         }
         return seq
     }
 
     fileprivate func write(into buf: Writer) {
-        let len = Int32(self.count)
+        let len = Int32(count)
         buf.writeInt(len)
         for item in self {
             item.write(into: buf)
@@ -401,14 +472,14 @@ extension Dictionary: ViaFfiUsingByteBuffer, ViaFfi, Serializable where Key == S
         let len: Int32 = try buf.readInt()
         var dict = [String: Value]()
         dict.reserveCapacity(Int(len))
-        for _ in 0..<len {
+        for _ in 0 ..< len {
             dict[try String.read(from: buf)] = try Value.read(from: buf)
         }
         return dict
     }
 
     fileprivate func write(into buf: Writer) {
-        let len = Int32(self.count)
+        let len = Int32(count)
         buf.writeInt(len)
         for (key, value) in self {
             key.write(into: buf)
@@ -419,19 +490,18 @@ extension Dictionary: ViaFfiUsingByteBuffer, ViaFfi, Serializable where Key == S
 
 // Public interface members begin here.
 
-
-
-fileprivate protocol RustError: LocalizedError {
+private protocol RustError: LocalizedError {
     static func fromConsuming(_ rustError: NativeRustError) throws -> Self?
 }
 
 // An error type for FFI errors. These errors occur at the UniFFI level, not
 // the library level.
-fileprivate enum UniffiInternalError: RustError {
+private enum UniffiInternalError: RustError {
     case bufferOverflow
     case incompleteData
     case unexpectedOptionalTag
     case unexpectedEnumCase
+    case unexpectedNullPointer
     case emptyResult
     case unknown(_ message: String)
 
@@ -441,6 +511,7 @@ fileprivate enum UniffiInternalError: RustError {
         case .incompleteData: return "The buffer still has data after lifting its containing value"
         case .unexpectedOptionalTag: return "Unexpected optional tag; should be 0 or 1"
         case .unexpectedEnumCase: return "Raw enum value doesn't match any cases"
+        case .unexpectedNullPointer: return "Raw pointer value was null"
         case .emptyResult: return "Unexpected nil returned from FFI function"
         case let .unknown(message): return "FFI function returned unknown error: \(message)"
         }
@@ -451,7 +522,7 @@ fileprivate enum UniffiInternalError: RustError {
         defer {
             if message != nil {
                 try! rustCall(UniffiInternalError.unknown("UniffiInternalError.fromConsuming")) { err in
-                    ffi_library_a699_string_free(message!, err)
+                    ffi_library_12e5_string_free(message!, err)
                 }
             }
         }
@@ -462,17 +533,15 @@ fileprivate enum UniffiInternalError: RustError {
     }
 }
 
-
-
 private func rustCall<T, E: RustError>(_ err: E, _ cb: (UnsafeMutablePointer<NativeRustError>) throws -> T?) throws -> T {
     return try unwrap(err) { native_err in
-        return try cb(native_err)
+        try cb(native_err)
     }
 }
 
 private func nullableRustCall<T, E: RustError>(_ err: E, _ cb: (UnsafeMutablePointer<NativeRustError>) throws -> T?) throws -> T? {
     return try tryUnwrap(err) { native_err in
-        return try cb(native_err)
+        try cb(native_err)
     }
 }
 
@@ -485,7 +554,7 @@ private func unwrap<T, E: RustError>(_ err: E, _ callback: (UnsafeMutablePointer
 }
 
 @discardableResult
-private func tryUnwrap<T, E: RustError>(_ err: E, _ callback: (UnsafeMutablePointer<NativeRustError>) throws -> T?) throws -> T? {
+private func tryUnwrap<T, E: RustError>(_: E, _ callback: (UnsafeMutablePointer<NativeRustError>) throws -> T?) throws -> T? {
     var native_err = NativeRustError(code: 0, message: nil)
     let returnedVal = try callback(&native_err)
     if let retErr = try E.fromConsuming(native_err) {
@@ -494,22 +563,12 @@ private func tryUnwrap<T, E: RustError>(_ err: E, _ callback: (UnsafeMutablePoin
     return returnedVal
 }
 
-
-
-
-public func boolIncTest(value: Bool )  -> Bool {
+public func boolIncTest(value: Bool) -> Bool {
     let _retval = try! rustCall(
-    
-    
-    UniffiInternalError.unknown("rustCall")
-    
-) { err in
-    library_a699_bool_inc_test(value.lower() ,err)
-}
+        UniffiInternalError.unknown("rustCall")
+
+    ) { err in
+        library_12e5_bool_inc_test(value.lower(), err)
+    }
     return try! Bool.lift(_retval)
 }
-
-
-
-
-

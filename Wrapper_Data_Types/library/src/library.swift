@@ -8,7 +8,7 @@ private extension RustBuffer {
     init(bytes: [UInt8]) {
         let rbuf = bytes.withUnsafeBufferPointer { ptr in
             try! rustCall(UniffiInternalError.unknown("RustBuffer.init")) { err in
-                ffi_library_c453_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), err)
+                ffi_library_8bbb_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), err)
             }
         }
         // Ref https://github.com/mozilla/uniffi-rs/issues/334 for the extra "padding" arg.
@@ -19,7 +19,7 @@ private extension RustBuffer {
     // The buffer must not be used after this is called.
     func deallocate() {
         try! rustCall(UniffiInternalError.unknown("RustBuffer.deallocate")) { err in
-            ffi_library_c453_rustbuffer_free(self, err)
+            ffi_library_8bbb_rustbuffer_free(self, err)
         }
     }
 }
@@ -200,7 +200,7 @@ extension String: ViaFfi {
     fileprivate static func lift(_ v: FfiType) throws -> Self {
         defer {
             try! rustCall(UniffiInternalError.unknown("String.lift")) { err in
-                ffi_library_c453_rustbuffer_free(v, err)
+                ffi_library_8bbb_rustbuffer_free(v, err)
             }
         }
         if v.data == nil {
@@ -218,7 +218,7 @@ extension String: ViaFfi {
                 let buf = UnsafeBufferPointer(rebasing: ptr.prefix(upTo: ptr.count - 1))
                 let bytes = ForeignBytes(bufferPointer: buf)
                 return try! rustCall(UniffiInternalError.unknown("String.lower")) { err in
-                    ffi_library_c453_rustbuffer_from_bytes(bytes, err)
+                    ffi_library_8bbb_rustbuffer_from_bytes(bytes, err)
                 }
             }
         }
@@ -253,6 +253,78 @@ extension Bool: ViaFfi {
 
     fileprivate func lower() -> Int8 {
         return self ? 1 : 0
+    }
+}
+
+extension Date: ViaFfiUsingByteBuffer, ViaFfi {
+    fileprivate static func read(from buf: Reader) throws -> Self {
+        let seconds: Int64 = try buf.readInt()
+        let nanoseconds: UInt32 = try buf.readInt()
+        if seconds >= 0 {
+            let delta = Double(seconds) + (Double(nanoseconds) / 1.0e9)
+            return Date(timeIntervalSince1970: delta)
+        } else {
+            let delta = Double(seconds) - (Double(nanoseconds) / 1.0e9)
+            return Date(timeIntervalSince1970: delta)
+        }
+    }
+
+    fileprivate func write(into buf: Writer) {
+        var delta = timeIntervalSince1970
+        var sign: Int64 = 1
+        if delta < 0 {
+            // The nanoseconds portion of the epoch offset must always be
+            // positive, to simplify the calculation we will use the absolute
+            // value of the offset.
+            sign = -1
+            delta = -delta
+        }
+        if delta.rounded(.down) > Double(Int64.max) {
+            fatalError("Timestamp overflow, exceeds max bounds supported by Uniffi")
+        }
+        let seconds = Int64(delta)
+        let nanoseconds = UInt32((delta - Double(seconds)) * 1.0e9)
+        buf.writeInt(sign * seconds)
+        buf.writeInt(nanoseconds)
+    }
+}
+
+private extension TimeInterval {
+    static func liftDuration(_ buf: RustBuffer) throws -> Self {
+        let reader = Reader(data: Data(rustBuffer: buf))
+        let value = try Self.readDuration(from: reader)
+        if reader.hasRemaining() {
+            throw UniffiInternalError.incompleteData
+        }
+        buf.deallocate()
+        return value
+    }
+
+    func lowerDuration() -> RustBuffer {
+        let writer = Writer()
+        writeDuration(into: writer)
+        return RustBuffer(bytes: writer.bytes)
+    }
+
+    static func readDuration(from buf: Reader) throws -> Self {
+        let seconds: UInt64 = try buf.readInt()
+        let nanoseconds: UInt32 = try buf.readInt()
+        return Double(seconds) + (Double(nanoseconds) / 1.0e9)
+    }
+
+    func writeDuration(into buf: Writer) {
+        if rounded(.down) > Double(Int64.max) {
+            fatalError("Duration overflow, exceeds max bounds supported by Uniffi")
+        }
+
+        if self < 0 {
+            fatalError("Invalid duration, must be non-negative")
+        }
+
+        let seconds = UInt64(self)
+        let nanoseconds = UInt32((self - Double(seconds)) * 1.0e9)
+        buf.writeInt(seconds)
+        buf.writeInt(nanoseconds)
     }
 }
 
@@ -429,6 +501,7 @@ private enum UniffiInternalError: RustError {
     case incompleteData
     case unexpectedOptionalTag
     case unexpectedEnumCase
+    case unexpectedNullPointer
     case emptyResult
     case unknown(_ message: String)
 
@@ -438,6 +511,7 @@ private enum UniffiInternalError: RustError {
         case .incompleteData: return "The buffer still has data after lifting its containing value"
         case .unexpectedOptionalTag: return "Unexpected optional tag; should be 0 or 1"
         case .unexpectedEnumCase: return "Raw enum value doesn't match any cases"
+        case .unexpectedNullPointer: return "Raw pointer value was null"
         case .emptyResult: return "Unexpected nil returned from FFI function"
         case let .unknown(message): return "FFI function returned unknown error: \(message)"
         }
@@ -448,7 +522,7 @@ private enum UniffiInternalError: RustError {
         defer {
             if message != nil {
                 try! rustCall(UniffiInternalError.unknown("UniffiInternalError.fromConsuming")) { err in
-                    ffi_library_c453_string_free(message!, err)
+                    ffi_library_8bbb_string_free(message!, err)
                 }
             }
         }
@@ -483,7 +557,7 @@ public enum ArithmeticError: RustError {
         defer {
             if message != nil {
                 try! rustCall(UniffiInternalError.unknown("ArithmeticError.fromConsuming")) { err in
-                    ffi_library_c453_string_free(message!, err)
+                    ffi_library_8bbb_string_free(message!, err)
                 }
             }
         }
@@ -530,9 +604,9 @@ private func tryUnwrap<T, E: RustError>(_: E, _ callback: (UnsafeMutablePointer<
     return returnedVal
 }
 
-public struct Point: Equatable, Hashable {
-    public let x: Double
-    public let y: Double
+public struct Point {
+    public var x: Double
+    public var y: Double
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -540,7 +614,9 @@ public struct Point: Equatable, Hashable {
         self.x = x
         self.y = y
     }
+}
 
+extension Point: Equatable, Hashable {
     public static func == (lhs: Point, rhs: Point) -> Bool {
         if lhs.x != rhs.x {
             return false
@@ -557,26 +633,28 @@ public struct Point: Equatable, Hashable {
     }
 }
 
-extension Point: ViaFfiUsingByteBuffer, ViaFfi {
-    fileprivate static func read(from buf: Reader) throws -> Point {
+private extension Point {
+    static func read(from buf: Reader) throws -> Point {
         return try Point(
             x: Double.read(from: buf),
             y: Double.read(from: buf)
         )
     }
 
-    fileprivate func write(into buf: Writer) {
+    func write(into buf: Writer) {
         x.write(into: buf)
         y.write(into: buf)
     }
 }
+
+extension Point: ViaFfiUsingByteBuffer, ViaFfi {}
 
 public func boolIncTest(value: Bool) -> Bool {
     let _retval = try! rustCall(
         UniffiInternalError.unknown("rustCall")
 
     ) { err in
-        library_c453_bool_inc_test(value.lower(), err)
+        library_8bbb_bool_inc_test(value.lower(), err)
     }
     return try! Bool.lift(_retval)
 }
@@ -586,7 +664,7 @@ public func i8IncTest(value: Int8) -> Int8 {
         UniffiInternalError.unknown("rustCall")
 
     ) { err in
-        library_c453_i8_inc_test(value.lower(), err)
+        library_8bbb_i8_inc_test(value.lower(), err)
     }
     return try! Int8.lift(_retval)
 }
@@ -596,7 +674,7 @@ public func i16IncTest(value: Int16) -> Int16 {
         UniffiInternalError.unknown("rustCall")
 
     ) { err in
-        library_c453_i16_inc_test(value.lower(), err)
+        library_8bbb_i16_inc_test(value.lower(), err)
     }
     return try! Int16.lift(_retval)
 }
@@ -606,7 +684,7 @@ public func i32IncTest(value: Int32) -> Int32 {
         UniffiInternalError.unknown("rustCall")
 
     ) { err in
-        library_c453_i32_inc_test(value.lower(), err)
+        library_8bbb_i32_inc_test(value.lower(), err)
     }
     return try! Int32.lift(_retval)
 }
@@ -616,7 +694,7 @@ public func i64IncTest(value: Int64) -> Int64 {
         UniffiInternalError.unknown("rustCall")
 
     ) { err in
-        library_c453_i64_inc_test(value.lower(), err)
+        library_8bbb_i64_inc_test(value.lower(), err)
     }
     return try! Int64.lift(_retval)
 }
@@ -626,7 +704,7 @@ public func u8IncTest(value: UInt8) -> UInt8 {
         UniffiInternalError.unknown("rustCall")
 
     ) { err in
-        library_c453_u8_inc_test(value.lower(), err)
+        library_8bbb_u8_inc_test(value.lower(), err)
     }
     return try! UInt8.lift(_retval)
 }
@@ -636,7 +714,7 @@ public func u16IncTest(value: UInt16) -> UInt16 {
         UniffiInternalError.unknown("rustCall")
 
     ) { err in
-        library_c453_u16_inc_test(value.lower(), err)
+        library_8bbb_u16_inc_test(value.lower(), err)
     }
     return try! UInt16.lift(_retval)
 }
@@ -646,7 +724,7 @@ public func u32IncTest(value: UInt32) -> UInt32 {
         UniffiInternalError.unknown("rustCall")
 
     ) { err in
-        library_c453_u32_inc_test(value.lower(), err)
+        library_8bbb_u32_inc_test(value.lower(), err)
     }
     return try! UInt32.lift(_retval)
 }
@@ -656,7 +734,7 @@ public func u64IncTest(value: UInt64) -> UInt64 {
         UniffiInternalError.unknown("rustCall")
 
     ) { err in
-        library_c453_u64_inc_test(value.lower(), err)
+        library_8bbb_u64_inc_test(value.lower(), err)
     }
     return try! UInt64.lift(_retval)
 }
@@ -666,7 +744,7 @@ public func floatIncTest(value: Float) -> Float {
         UniffiInternalError.unknown("rustCall")
 
     ) { err in
-        library_c453_float_inc_test(value.lower(), err)
+        library_8bbb_float_inc_test(value.lower(), err)
     }
     return try! Float.lift(_retval)
 }
@@ -676,7 +754,7 @@ public func doubleIncTest(value: Double) -> Double {
         UniffiInternalError.unknown("rustCall")
 
     ) { err in
-        library_c453_double_inc_test(value.lower(), err)
+        library_8bbb_double_inc_test(value.lower(), err)
     }
     return try! Double.lift(_retval)
 }
@@ -686,7 +764,7 @@ public func stringIncTest(value: String) -> String {
         UniffiInternalError.unknown("rustCall")
 
     ) { err in
-        library_c453_string_inc_test(value.lower(), err)
+        library_8bbb_string_inc_test(value.lower(), err)
     }
     return try! String.lift(_retval)
 }
@@ -696,7 +774,7 @@ public func byrefIncTest(value: Point) -> Point {
         UniffiInternalError.unknown("rustCall")
 
     ) { err in
-        library_c453_byref_inc_test(value.lower(), err)
+        library_8bbb_byref_inc_test(value.lower(), err)
     }
     return try! Point.lift(_retval)
 }
@@ -706,7 +784,7 @@ public func optionalTypeIncTest(value: Int32?) -> Int32? {
         UniffiInternalError.unknown("rustCall")
 
     ) { err in
-        library_c453_optional_type_inc_test(value.lower(), err)
+        library_8bbb_optional_type_inc_test(value.lower(), err)
     }
     return try! Int32?.lift(_retval)
 }
@@ -716,7 +794,7 @@ public func vectorIncTest(value: [String]) -> [String] {
         UniffiInternalError.unknown("rustCall")
 
     ) { err in
-        library_c453_vector_inc_test(value.lower(), err)
+        library_8bbb_vector_inc_test(value.lower(), err)
     }
     return try! [String].lift(_retval)
 }
@@ -726,7 +804,7 @@ public func hashMapIncTest(value: [String: Int32]) -> [String: Int32] {
         UniffiInternalError.unknown("rustCall")
 
     ) { err in
-        library_c453_hash_map_inc_test(value.lower(), err)
+        library_8bbb_hash_map_inc_test(value.lower(), err)
     }
     return try! [String: Int32].lift(_retval)
 }
@@ -736,7 +814,7 @@ public func voidIncTest(value: Int32) {
         UniffiInternalError.unknown("rustCall")
 
     ) { err in
-        library_c453_void_inc_test(value.lower(), err)
+        library_8bbb_void_inc_test(value.lower(), err)
     }
 }
 
@@ -745,7 +823,7 @@ public func errorIncTest(a: UInt64, b: UInt64) throws -> UInt64 {
         ArithmeticError.NoError
 
     ) { err in
-        library_c453_error_inc_test(a.lower(), b.lower(), err)
+        library_8bbb_error_inc_test(a.lower(), b.lower(), err)
     }
     return try UInt64.lift(_retval)
 }

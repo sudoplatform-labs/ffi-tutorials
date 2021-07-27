@@ -67,14 +67,14 @@ Next, navigate into the new *library* sub-directory just created, open Cargo.tom
 
 ```
 [dependencies]
-uniffi = "0.8"
+uniffi = "0.12"
   
 [lib]
 name = "library"
 crate-type = ["cdylib"]
  
 [build-dependencies]
-uniffi_build = "0.8"
+uniffi_build = "0.12"
 ```
 
 These additions tell cargo to load uniffi version 0.8 and to create a cdylib named library.  
@@ -113,26 +113,25 @@ The scaffolding layer is set of code that exposes the library's API and serializ
 uniffi-bindgen scaffolding ./src/library.uniffi.udl
 ```
 
-Executing this command will create a file called *./src/library.uniffi.uniffi.rs*. It is important to *not* modify this file.  However, viewing it in a code editor will show that ~136 lines of Rust code have been created. This code constitutes the FFI and contains numerous comments describing its operation.  The FFI routine correspondig to the API function, bool_inc_test( ), created above is found at line ~118 and is as follows:
+Executing this command will create a file called *./src/library.uniffi.uniffi.rs*. It is important to *not* modify this file.  However, viewing it in a code editor will show that ~143 lines of Rust code have been created. This code constitutes the FFI and contains numerous comments describing its operation.  The FFI routine correspondig to the API function, bool_inc_test( ), created above is found at line ~118 and is as follows:
 
 ```
-118 #[allow(clippy::all)]
-119 #[doc(hidden)]
-120 #[no_mangle]
-121 pub extern "C" fn library_a699_bool_inc_test(
-122     value: i8,
-123     err: &mut uniffi::deps::ffi_support::ExternError,
-124 ) -> i8 {
-125     // If the provided function does not match the signature specified in the UDL
-126     // then this attempt to call it will not compile, and will give guidance as to why.
-127     uniffi::deps::log::debug!("library_a699_bool_inc_test");
-128 
-129     uniffi::deps::ffi_support::call_with_output(err, || {
-130         let _retval = bool_inc_test(<bool as uniffi::ViaFfi>::try_lift(value).unwrap());
-131         <bool as uniffi::ViaFfi>::lower(_retval)
-132     })
-133 }
-111
+124 #[allow(clippy::all)]
+125 #[doc(hidden)]
+126 #[no_mangle]
+127 pub extern "C" fn library_12e5_bool_inc_test(
+128     value: i8,
+129     err: &mut uniffi::deps::ffi_support::ExternError,
+130 ) -> i8 {
+131     // If the provided function does not match the signature specified in the UDL
+132     // then this attempt to call it will not compile, and will give guidance as to why.
+133     uniffi::deps::log::debug!("library_12e5_bool_inc_test");
+134 
+135     uniffi::deps::ffi_support::call_with_output(err, || {
+136         let _retval = bool_inc_test(<bool as uniffi::ViaFfi>::try_lift(value).unwrap());
+137         <bool as uniffi::ViaFfi>::lower(_retval)
+138     })
+139 }
 ```
 
 While this code contains a valid FFI function and can be called, it is also in a format that might appear a little strange to application programmers who are not also C-programmers.  For that reason a language-specific wrapper function can simplify calls into the library.
@@ -149,8 +148,9 @@ This will build the Rust library according to the settings in Cargo.toml.  If ev
 
 ```
 % cargo build
-   Compiling library v0.1.0 (/Users/username/Development/rust/WrapperTests/Wrapper1/library)
-    Finished dev [unoptimized + debuginfo] target(s) in 0.70s
+   Compiling ...
+   ...
+    Finished dev [unoptimized + debuginfo] target(s) in 20.54s
 ```
 
 ## Genrating a Swift Language Wrapper
@@ -178,18 +178,18 @@ Once SwiftFormat is installed, run the uniffi-bindgen command again and the gene
 This process generates a file called *library.swift* that has ~500 lines of code.  The last function in the file contains the Swift representation of the bool_inc_test( ) function and appears as follows:
 
 ```
-492 public func boolIncTest(value: Bool) -> Bool {
-493     let _retval = try! rustCall(
-494         UniffiInternalError.unknown("rustCall")
-495 
-496     ) { err in
-497         library_a699_bool_inc_test(value.lower(), err)
-498     }
-499     return try! Bool.lift(_retval)
-500 }
+566 public func boolIncTest(value: Bool) -> Bool {
+567     let _retval = try! rustCall(
+568         UniffiInternalError.unknown("rustCall")
+569 
+570     ) { err in
+571         library_12e5_bool_inc_test(value.lower(), err)
+572     }
+573     return try! Bool.lift(_retval)
+574 }
 ```
 
-Notice that the Swift function has been formatted in the style of other Swift source code -- even the name has been converted from *snake case* (used in Rust) to *camel case* (used in Swift).  Additionally, this Swift function invokes (on line 497) the function, library_a699_bool_inc_test( ), that was generated in *./src/library.uniffi.uniffi.rs* above.  
+Notice that the Swift function has been formatted in the style of other Swift source code -- even the name has been converted from *snake case* (used in Rust) to *camel case* (used in Swift).  Additionally, this Swift function invokes (on line 497) the function, library_12e5_bool_inc_test( ), that was generated in *./src/library.uniffi.uniffi.rs* above.  
 
 Although, this language wrapper generation step isn't strictly necessary from an FFI perspective, it is of notable value to the Swift programmers who will import the library.  This step allows them to interface with a code interface to the library the looks and feels like Swift rather than having to learn how to call C programming interfaces.
 
@@ -218,10 +218,10 @@ Once yapf is installed, run the uniffi-bindgen command again and the generated P
 This process generates a file called *library.py* that has ~300 lines of code.  The last function in the file contains the Python representation of the bool_inc_test( ) function and appears as follows:
 
 ```
-284 def bool_inc_test(value):
-285     value = bool(value)
-286     _retval = rust_call_with_error(InternalError,_UniFFILib.library_a699_bool_inc_test,(1 if value else 0))
-287     return (True if _retval else False)
+285 def bool_inc_test(value):
+286     value = bool(value)
+287     _retval = rust_call_with_error(InternalError,_UniFFILib.library_12e5_bool_inc_test,(1 if value else 0))
+288     return (True if _retval else False)
 ```
 
 Notice that the Python function has been formatted in the style of other Python source code.  Additionally, this Python function invokes (on line 497) the function, library_a699_bool_inc_test( ), that was generated in *./src/library.uniffi.uniffi.rs* above.  
