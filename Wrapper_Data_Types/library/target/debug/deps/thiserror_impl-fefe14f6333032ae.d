@@ -1,0 +1,11 @@
+/Users/mccown/Development/Anonyome/ffi-tutorials/Wrapper_Data_Types/library/target/debug/deps/libthiserror_impl-fefe14f6333032ae.dylib: /Users/mccown/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.28/src/lib.rs /Users/mccown/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.28/src/ast.rs /Users/mccown/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.28/src/attr.rs /Users/mccown/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.28/src/expand.rs /Users/mccown/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.28/src/fmt.rs /Users/mccown/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.28/src/prop.rs /Users/mccown/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.28/src/valid.rs
+
+/Users/mccown/Development/Anonyome/ffi-tutorials/Wrapper_Data_Types/library/target/debug/deps/thiserror_impl-fefe14f6333032ae.d: /Users/mccown/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.28/src/lib.rs /Users/mccown/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.28/src/ast.rs /Users/mccown/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.28/src/attr.rs /Users/mccown/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.28/src/expand.rs /Users/mccown/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.28/src/fmt.rs /Users/mccown/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.28/src/prop.rs /Users/mccown/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.28/src/valid.rs
+
+/Users/mccown/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.28/src/lib.rs:
+/Users/mccown/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.28/src/ast.rs:
+/Users/mccown/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.28/src/attr.rs:
+/Users/mccown/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.28/src/expand.rs:
+/Users/mccown/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.28/src/fmt.rs:
+/Users/mccown/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.28/src/prop.rs:
+/Users/mccown/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.28/src/valid.rs:

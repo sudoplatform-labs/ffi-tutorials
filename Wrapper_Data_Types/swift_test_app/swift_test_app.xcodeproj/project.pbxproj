@@ -40,8 +40,9 @@
 		38542FD625D5F52B00FBA849 /* library_test_app.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = library_test_app.entitlements; sourceTree = "<group>"; };
 		3862FEC625D378FB004DC484 /* swift_test_app */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = swift_test_app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3862FEC925D378FB004DC484 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		38A0549526E03F2700768352 /* libraryFFI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = libraryFFI.h; path = ../../library/src/libraryFFI.h; sourceTree = "<group>"; };
+		38A0549626E03F2700768352 /* libraryFFI.modulemap */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = "sourcecode.module-map"; name = libraryFFI.modulemap; path = ../../library/src/libraryFFI.modulemap; sourceTree = "<group>"; };
 		38D89E1725FAFBC800F9D4F2 /* liblibrary.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = liblibrary.dylib; path = ../library/target/debug/liblibrary.dylib; sourceTree = "<group>"; };
-		38D89E1925FAFC7F00F9D4F2 /* uniffi_library-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "uniffi_library-Bridging-Header.h"; path = "../../library/src/uniffi_library-Bridging-Header.h"; sourceTree = "<group>"; };
 		38D89E1A25FAFC7F00F9D4F2 /* library.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = library.swift; path = ../../library/src/library.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -78,8 +79,9 @@
 		3862FEC825D378FB004DC484 /* swift_test_app */ = {
 			isa = PBXGroup;
 			children = (
+				38A0549526E03F2700768352 /* libraryFFI.h */,
+				38A0549626E03F2700768352 /* libraryFFI.modulemap */,
 				38D89E1A25FAFC7F00F9D4F2 /* library.swift */,
-				38D89E1925FAFC7F00F9D4F2 /* uniffi_library-Bridging-Header.h */,
 				38542FD625D5F52B00FBA849 /* library_test_app.entitlements */,
 				3862FEC925D378FB004DC484 /* main.swift */,
 			);
@@ -289,7 +291,7 @@
 				DEVELOPMENT_TEAM = 8C2VK65N56;
 				ENABLE_HARDENED_RUNTIME = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_OBJC_BRIDGING_HEADER = "../library/src/uniffi_library-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = ../library/src/libraryFFI.h;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -303,7 +305,7 @@
 				DEVELOPMENT_TEAM = 8C2VK65N56;
 				ENABLE_HARDENED_RUNTIME = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_OBJC_BRIDGING_HEADER = "../library/src/uniffi_library-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = ../library/src/libraryFFI.h;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;

@@ -3,33 +3,38 @@
 
 import Foundation
 
+// Depending on the consumer's build setup, the low-level FFI code
+// might be in a separate module, or it might be compiled inline into
+// this module. This is a bit of light hackery to work with both.
+#if canImport(libraryFFI)
+    import libraryFFI
+#endif
+
 private extension RustBuffer {
     // Allocate a new buffer, copying the contents of a `UInt8` array.
     init(bytes: [UInt8]) {
         let rbuf = bytes.withUnsafeBufferPointer { ptr in
-            try! rustCall(UniffiInternalError.unknown("RustBuffer.init")) { err in
-                ffi_library_8bbb_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), err)
-            }
+            try! rustCall { ffi_library_995e_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
         }
-        // Ref https://github.com/mozilla/uniffi-rs/issues/334 for the extra "padding" arg.
-        self.init(capacity: rbuf.capacity, len: rbuf.len, data: rbuf.data, padding: 0)
+        self.init(capacity: rbuf.capacity, len: rbuf.len, data: rbuf.data)
     }
 
     // Frees the buffer in place.
     // The buffer must not be used after this is called.
     func deallocate() {
-        try! rustCall(UniffiInternalError.unknown("RustBuffer.deallocate")) { err in
-            ffi_library_8bbb_rustbuffer_free(self, err)
-        }
+        try! rustCall { ffi_library_995e_rustbuffer_free(self, $0) }
     }
 }
 
 private extension ForeignBytes {
     init(bufferPointer: UnsafeBufferPointer<UInt8>) {
-        // Ref https://github.com/mozilla/uniffi-rs/issues/334 for the extra "padding" args.
-        self.init(len: Int32(bufferPointer.count), data: bufferPointer.baseAddress, padding: 0, padding2: 0)
+        self.init(len: Int32(bufferPointer.count), data: bufferPointer.baseAddress)
     }
 }
+
+// For every type used in the interface, we provide helper methods for conveniently
+// lifting and lowering that type from C-compatible data, and for reading and writing
+// values of that type in a buffer.
 
 // Helper classes/extensions that don't change.
 // Someday, this will be in a libray of its own.
@@ -194,137 +199,63 @@ private extension ViaFfiUsingByteBuffer {
 
 // Implement our protocols for the built-in types that we use.
 
-extension String: ViaFfi {
-    fileprivate typealias FfiType = RustBuffer
-
-    fileprivate static func lift(_ v: FfiType) throws -> Self {
-        defer {
-            try! rustCall(UniffiInternalError.unknown("String.lift")) { err in
-                ffi_library_8bbb_rustbuffer_free(v, err)
-            }
-        }
-        if v.data == nil {
-            return String()
-        }
-        let bytes = UnsafeBufferPointer<UInt8>(start: v.data!, count: Int(v.len))
-        return String(bytes: bytes, encoding: String.Encoding.utf8)!
-    }
-
-    fileprivate func lower() -> FfiType {
-        return utf8CString.withUnsafeBufferPointer { ptr in
-            // The swift string gives us int8_t, we want uint8_t.
-            ptr.withMemoryRebound(to: UInt8.self) { ptr in
-                // The swift string gives us a trailing null byte, we don't want it.
-                let buf = UnsafeBufferPointer(rebasing: ptr.prefix(upTo: ptr.count - 1))
-                let bytes = ForeignBytes(bufferPointer: buf)
-                return try! rustCall(UniffiInternalError.unknown("String.lower")) { err in
-                    ffi_library_8bbb_rustbuffer_from_bytes(bytes, err)
-                }
-            }
+extension Optional: ViaFfiUsingByteBuffer, ViaFfi, Serializable where Wrapped: Serializable {
+    fileprivate static func read(from buf: Reader) throws -> Self {
+        switch try buf.readInt() as Int8 {
+        case 0: return nil
+        case 1: return try Wrapped.read(from: buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
 
+    fileprivate func write(into buf: Writer) {
+        guard let value = self else {
+            buf.writeInt(Int8(0))
+            return
+        }
+        buf.writeInt(Int8(1))
+        value.write(into: buf)
+    }
+}
+
+extension Array: ViaFfiUsingByteBuffer, ViaFfi, Serializable where Element: Serializable {
     fileprivate static func read(from buf: Reader) throws -> Self {
         let len: Int32 = try buf.readInt()
-        return String(bytes: try buf.readBytes(count: Int(len)), encoding: String.Encoding.utf8)!
+        var seq = [Element]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try Element.read(from: buf))
+        }
+        return seq
     }
 
     fileprivate func write(into buf: Writer) {
-        let len = Int32(utf8.count)
+        let len = Int32(count)
         buf.writeInt(len)
-        buf.writeBytes(utf8)
+        for item in self {
+            item.write(into: buf)
+        }
     }
 }
 
-extension Bool: ViaFfi {
-    fileprivate typealias FfiType = Int8
-
-    fileprivate static func read(from buf: Reader) throws -> Bool {
-        return try lift(buf.readInt())
-    }
-
-    fileprivate func write(into buf: Writer) {
-        buf.writeInt(lower())
-    }
-
-    fileprivate static func lift(_ v: Int8) throws -> Bool {
-        return v != 0
-    }
-
-    fileprivate func lower() -> Int8 {
-        return self ? 1 : 0
-    }
-}
-
-extension Date: ViaFfiUsingByteBuffer, ViaFfi {
+extension Dictionary: ViaFfiUsingByteBuffer, ViaFfi, Serializable where Key == String, Value: Serializable {
     fileprivate static func read(from buf: Reader) throws -> Self {
-        let seconds: Int64 = try buf.readInt()
-        let nanoseconds: UInt32 = try buf.readInt()
-        if seconds >= 0 {
-            let delta = Double(seconds) + (Double(nanoseconds) / 1.0e9)
-            return Date(timeIntervalSince1970: delta)
-        } else {
-            let delta = Double(seconds) - (Double(nanoseconds) / 1.0e9)
-            return Date(timeIntervalSince1970: delta)
+        let len: Int32 = try buf.readInt()
+        var dict = [String: Value]()
+        dict.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            dict[try String.read(from: buf)] = try Value.read(from: buf)
         }
+        return dict
     }
 
     fileprivate func write(into buf: Writer) {
-        var delta = timeIntervalSince1970
-        var sign: Int64 = 1
-        if delta < 0 {
-            // The nanoseconds portion of the epoch offset must always be
-            // positive, to simplify the calculation we will use the absolute
-            // value of the offset.
-            sign = -1
-            delta = -delta
+        let len = Int32(count)
+        buf.writeInt(len)
+        for (key, value) in self {
+            key.write(into: buf)
+            value.write(into: buf)
         }
-        if delta.rounded(.down) > Double(Int64.max) {
-            fatalError("Timestamp overflow, exceeds max bounds supported by Uniffi")
-        }
-        let seconds = Int64(delta)
-        let nanoseconds = UInt32((delta - Double(seconds)) * 1.0e9)
-        buf.writeInt(sign * seconds)
-        buf.writeInt(nanoseconds)
-    }
-}
-
-private extension TimeInterval {
-    static func liftDuration(_ buf: RustBuffer) throws -> Self {
-        let reader = Reader(data: Data(rustBuffer: buf))
-        let value = try Self.readDuration(from: reader)
-        if reader.hasRemaining() {
-            throw UniffiInternalError.incompleteData
-        }
-        buf.deallocate()
-        return value
-    }
-
-    func lowerDuration() -> RustBuffer {
-        let writer = Writer()
-        writeDuration(into: writer)
-        return RustBuffer(bytes: writer.bytes)
-    }
-
-    static func readDuration(from buf: Reader) throws -> Self {
-        let seconds: UInt64 = try buf.readInt()
-        let nanoseconds: UInt32 = try buf.readInt()
-        return Double(seconds) + (Double(nanoseconds) / 1.0e9)
-    }
-
-    func writeDuration(into buf: Writer) {
-        if rounded(.down) > Double(Int64.max) {
-            fatalError("Duration overflow, exceeds max bounds supported by Uniffi")
-        }
-
-        if self < 0 {
-            fatalError("Invalid duration, must be non-negative")
-        }
-
-        let seconds = UInt64(self)
-        let nanoseconds = UInt32((self - Double(seconds)) * 1.0e9)
-        buf.writeInt(seconds)
-        buf.writeInt(nanoseconds)
     }
 }
 
@@ -428,82 +359,77 @@ extension Double: Primitive, ViaFfi {
     }
 }
 
-extension Optional: ViaFfiUsingByteBuffer, ViaFfi, Serializable where Wrapped: Serializable {
-    fileprivate static func read(from buf: Reader) throws -> Self {
-        switch try buf.readInt() as Int8 {
-        case 0: return nil
-        case 1: return try Wrapped.read(from: buf)
-        default: throw UniffiInternalError.unexpectedOptionalTag
-        }
+extension Bool: ViaFfi {
+    fileprivate typealias FfiType = Int8
+
+    fileprivate static func read(from buf: Reader) throws -> Bool {
+        return try lift(buf.readInt())
     }
 
     fileprivate func write(into buf: Writer) {
-        guard let value = self else {
-            buf.writeInt(Int8(0))
-            return
-        }
-        buf.writeInt(Int8(1))
-        value.write(into: buf)
+        buf.writeInt(lower())
+    }
+
+    fileprivate static func lift(_ v: Int8) throws -> Bool {
+        return v != 0
+    }
+
+    fileprivate func lower() -> Int8 {
+        return self ? 1 : 0
     }
 }
 
-extension Array: ViaFfiUsingByteBuffer, ViaFfi, Serializable where Element: Serializable {
+extension String: ViaFfi {
+    fileprivate typealias FfiType = RustBuffer
+
+    fileprivate static func lift(_ v: FfiType) throws -> Self {
+        defer {
+            try! rustCall { ffi_library_995e_rustbuffer_free(v, $0) }
+        }
+        if v.data == nil {
+            return String()
+        }
+        let bytes = UnsafeBufferPointer<UInt8>(start: v.data!, count: Int(v.len))
+        return String(bytes: bytes, encoding: String.Encoding.utf8)!
+    }
+
+    fileprivate func lower() -> FfiType {
+        return utf8CString.withUnsafeBufferPointer { ptr in
+            // The swift string gives us int8_t, we want uint8_t.
+            ptr.withMemoryRebound(to: UInt8.self) { ptr in
+                // The swift string gives us a trailing null byte, we don't want it.
+                let buf = UnsafeBufferPointer(rebasing: ptr.prefix(upTo: ptr.count - 1))
+                let bytes = ForeignBytes(bufferPointer: buf)
+                return try! rustCall { ffi_library_995e_rustbuffer_from_bytes(bytes, $0) }
+            }
+        }
+    }
+
     fileprivate static func read(from buf: Reader) throws -> Self {
         let len: Int32 = try buf.readInt()
-        var seq = [Element]()
-        seq.reserveCapacity(Int(len))
-        for _ in 0 ..< len {
-            seq.append(try Element.read(from: buf))
-        }
-        return seq
+        return String(bytes: try buf.readBytes(count: Int(len)), encoding: String.Encoding.utf8)!
     }
 
     fileprivate func write(into buf: Writer) {
-        let len = Int32(count)
+        let len = Int32(utf8.count)
         buf.writeInt(len)
-        for item in self {
-            item.write(into: buf)
-        }
-    }
-}
-
-extension Dictionary: ViaFfiUsingByteBuffer, ViaFfi, Serializable where Key == String, Value: Serializable {
-    fileprivate static func read(from buf: Reader) throws -> Self {
-        let len: Int32 = try buf.readInt()
-        var dict = [String: Value]()
-        dict.reserveCapacity(Int(len))
-        for _ in 0 ..< len {
-            dict[try String.read(from: buf)] = try Value.read(from: buf)
-        }
-        return dict
-    }
-
-    fileprivate func write(into buf: Writer) {
-        let len = Int32(count)
-        buf.writeInt(len)
-        for (key, value) in self {
-            key.write(into: buf)
-            value.write(into: buf)
-        }
+        buf.writeBytes(utf8)
     }
 }
 
 // Public interface members begin here.
 
-private protocol RustError: LocalizedError {
-    static func fromConsuming(_ rustError: NativeRustError) throws -> Self?
-}
-
 // An error type for FFI errors. These errors occur at the UniFFI level, not
 // the library level.
-private enum UniffiInternalError: RustError {
+private enum UniffiInternalError: LocalizedError {
     case bufferOverflow
     case incompleteData
     case unexpectedOptionalTag
     case unexpectedEnumCase
     case unexpectedNullPointer
-    case emptyResult
-    case unknown(_ message: String)
+    case unexpectedRustCallStatusCode
+    case unexpectedRustCallError
+    case rustPanic(_ message: String)
 
     public var errorDescription: String? {
         switch self {
@@ -512,96 +438,95 @@ private enum UniffiInternalError: RustError {
         case .unexpectedOptionalTag: return "Unexpected optional tag; should be 0 or 1"
         case .unexpectedEnumCase: return "Raw enum value doesn't match any cases"
         case .unexpectedNullPointer: return "Raw pointer value was null"
-        case .emptyResult: return "Unexpected nil returned from FFI function"
-        case let .unknown(message): return "FFI function returned unknown error: \(message)"
-        }
-    }
-
-    fileprivate static func fromConsuming(_ rustError: NativeRustError) throws -> Self? {
-        let message = rustError.message
-        defer {
-            if message != nil {
-                try! rustCall(UniffiInternalError.unknown("UniffiInternalError.fromConsuming")) { err in
-                    ffi_library_8bbb_string_free(message!, err)
-                }
-            }
-        }
-        switch rustError.code {
-        case 0: return nil
-        default: return .unknown(String(cString: message!))
+        case .unexpectedRustCallStatusCode: return "Unexpected RustCallStatus code"
+        case .unexpectedRustCallError: return "CALL_ERROR but no errorClass specified"
+        case let .rustPanic(message): return message
         }
     }
 }
 
-public enum ArithmeticError: RustError {
-    case NoError
+private let CALL_SUCCESS: Int8 = 0
+private let CALL_ERROR: Int8 = 1
+private let CALL_PANIC: Int8 = 2
 
+private extension RustCallStatus {
+    init() {
+        self.init(
+            code: CALL_SUCCESS,
+            errorBuf: RustBuffer(
+                capacity: 0,
+                len: 0,
+                data: nil
+            )
+        )
+    }
+}
+
+public enum ArithmeticError {
+    // Simple error enums only carry a message
     case IntegerOverflow(message: String)
+}
 
-    /// Our implementation of the localizedError protocol
-    public var errorDescription: String? {
+extension ArithmeticError: ViaFfiUsingByteBuffer, ViaFfi {
+    fileprivate static func read(from buf: Reader) throws -> ArithmeticError {
+        let variant: Int32 = try buf.readInt()
+        switch variant {
+        case 1: return .IntegerOverflow(
+                message: try String.read(from: buf)
+            )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    fileprivate func write(into buf: Writer) {
         switch self {
         case let .IntegerOverflow(message):
-            return "ArithmeticError.IntegerOverflow: \(message)"
-
-        default:
-            return nil
-        }
-    }
-
-    // The name is attempting to indicate that we free message if it
-    // existed, and that it's a very bad idea to touch it after you call this
-    // function
-    fileprivate static func fromConsuming(_ rustError: NativeRustError) throws -> Self? {
-        let message = rustError.message
-        defer {
-            if message != nil {
-                try! rustCall(UniffiInternalError.unknown("ArithmeticError.fromConsuming")) { err in
-                    ffi_library_8bbb_string_free(message!, err)
-                }
-            }
-        }
-        switch rustError.code {
-        case 0:
-            return nil
-
-        case 1:
-            return .IntegerOverflow(message: String(cString: message!))
-
-        default:
-            return nil
+            buf.writeInt(Int32(1))
+            message.write(into: buf)
         }
     }
 }
 
-private func rustCall<T, E: RustError>(_ err: E, _ cb: (UnsafeMutablePointer<NativeRustError>) throws -> T?) throws -> T {
-    return try unwrap(err) { native_err in
-        try cb(native_err)
-    }
+extension ArithmeticError: Equatable, Hashable {}
+
+extension ArithmeticError: Error {}
+
+private func rustCall<T>(_ callback: (UnsafeMutablePointer<RustCallStatus>) -> T) throws -> T {
+    try makeRustCall(callback, errorHandler: {
+        $0.deallocate()
+        return UniffiInternalError.unexpectedRustCallError
+    })
 }
 
-private func nullableRustCall<T, E: RustError>(_ err: E, _ cb: (UnsafeMutablePointer<NativeRustError>) throws -> T?) throws -> T? {
-    return try tryUnwrap(err) { native_err in
-        try cb(native_err)
-    }
+private func rustCallWithError<T, E: ViaFfiUsingByteBuffer & Error>(_: E.Type, _ callback: (UnsafeMutablePointer<RustCallStatus>) -> T) throws -> T {
+    try makeRustCall(callback, errorHandler: { try E.lift($0) })
 }
 
-@discardableResult
-private func unwrap<T, E: RustError>(_ err: E, _ callback: (UnsafeMutablePointer<NativeRustError>) throws -> T?) throws -> T {
-    guard let result = try tryUnwrap(err, callback) else {
-        throw UniffiInternalError.emptyResult
-    }
-    return result
-}
+private func makeRustCall<T>(_ callback: (UnsafeMutablePointer<RustCallStatus>) -> T, errorHandler: (RustBuffer) throws -> Error) throws -> T {
+    var callStatus = RustCallStatus()
+    let returnedVal = callback(&callStatus)
+    switch callStatus.code {
+    case CALL_SUCCESS:
+        return returnedVal
 
-@discardableResult
-private func tryUnwrap<T, E: RustError>(_: E, _ callback: (UnsafeMutablePointer<NativeRustError>) throws -> T?) throws -> T? {
-    var native_err = NativeRustError(code: 0, message: nil)
-    let returnedVal = try callback(&native_err)
-    if let retErr = try E.fromConsuming(native_err) {
-        throw retErr
+    case CALL_ERROR:
+        throw try errorHandler(callStatus.errorBuf)
+
+    case CALL_PANIC:
+        // When the rust code sees a panic, it tries to construct a RustBuffer
+        // with the message.  But if that code panics, then it just sends back
+        // an empty buffer.
+        if callStatus.errorBuf.len > 0 {
+            throw UniffiInternalError.rustPanic(try String.lift(callStatus.errorBuf))
+        } else {
+            callStatus.errorBuf.deallocate()
+            throw UniffiInternalError.rustPanic("Rust panic")
+        }
+
+    default:
+        throw UniffiInternalError.unexpectedRustCallStatusCode
     }
-    return returnedVal
 }
 
 public struct Point {
@@ -650,180 +575,162 @@ private extension Point {
 extension Point: ViaFfiUsingByteBuffer, ViaFfi {}
 
 public func boolIncTest(value: Bool) -> Bool {
-    let _retval = try! rustCall(
-        UniffiInternalError.unknown("rustCall")
+    let _retval = try!
 
-    ) { err in
-        library_8bbb_bool_inc_test(value.lower(), err)
-    }
+        rustCall {
+            library_995e_bool_inc_test(value.lower(), $0)
+        }
     return try! Bool.lift(_retval)
 }
 
 public func i8IncTest(value: Int8) -> Int8 {
-    let _retval = try! rustCall(
-        UniffiInternalError.unknown("rustCall")
+    let _retval = try!
 
-    ) { err in
-        library_8bbb_i8_inc_test(value.lower(), err)
-    }
+        rustCall {
+            library_995e_i8_inc_test(value.lower(), $0)
+        }
     return try! Int8.lift(_retval)
 }
 
 public func i16IncTest(value: Int16) -> Int16 {
-    let _retval = try! rustCall(
-        UniffiInternalError.unknown("rustCall")
+    let _retval = try!
 
-    ) { err in
-        library_8bbb_i16_inc_test(value.lower(), err)
-    }
+        rustCall {
+            library_995e_i16_inc_test(value.lower(), $0)
+        }
     return try! Int16.lift(_retval)
 }
 
 public func i32IncTest(value: Int32) -> Int32 {
-    let _retval = try! rustCall(
-        UniffiInternalError.unknown("rustCall")
+    let _retval = try!
 
-    ) { err in
-        library_8bbb_i32_inc_test(value.lower(), err)
-    }
+        rustCall {
+            library_995e_i32_inc_test(value.lower(), $0)
+        }
     return try! Int32.lift(_retval)
 }
 
 public func i64IncTest(value: Int64) -> Int64 {
-    let _retval = try! rustCall(
-        UniffiInternalError.unknown("rustCall")
+    let _retval = try!
 
-    ) { err in
-        library_8bbb_i64_inc_test(value.lower(), err)
-    }
+        rustCall {
+            library_995e_i64_inc_test(value.lower(), $0)
+        }
     return try! Int64.lift(_retval)
 }
 
 public func u8IncTest(value: UInt8) -> UInt8 {
-    let _retval = try! rustCall(
-        UniffiInternalError.unknown("rustCall")
+    let _retval = try!
 
-    ) { err in
-        library_8bbb_u8_inc_test(value.lower(), err)
-    }
+        rustCall {
+            library_995e_u8_inc_test(value.lower(), $0)
+        }
     return try! UInt8.lift(_retval)
 }
 
 public func u16IncTest(value: UInt16) -> UInt16 {
-    let _retval = try! rustCall(
-        UniffiInternalError.unknown("rustCall")
+    let _retval = try!
 
-    ) { err in
-        library_8bbb_u16_inc_test(value.lower(), err)
-    }
+        rustCall {
+            library_995e_u16_inc_test(value.lower(), $0)
+        }
     return try! UInt16.lift(_retval)
 }
 
 public func u32IncTest(value: UInt32) -> UInt32 {
-    let _retval = try! rustCall(
-        UniffiInternalError.unknown("rustCall")
+    let _retval = try!
 
-    ) { err in
-        library_8bbb_u32_inc_test(value.lower(), err)
-    }
+        rustCall {
+            library_995e_u32_inc_test(value.lower(), $0)
+        }
     return try! UInt32.lift(_retval)
 }
 
 public func u64IncTest(value: UInt64) -> UInt64 {
-    let _retval = try! rustCall(
-        UniffiInternalError.unknown("rustCall")
+    let _retval = try!
 
-    ) { err in
-        library_8bbb_u64_inc_test(value.lower(), err)
-    }
+        rustCall {
+            library_995e_u64_inc_test(value.lower(), $0)
+        }
     return try! UInt64.lift(_retval)
 }
 
 public func floatIncTest(value: Float) -> Float {
-    let _retval = try! rustCall(
-        UniffiInternalError.unknown("rustCall")
+    let _retval = try!
 
-    ) { err in
-        library_8bbb_float_inc_test(value.lower(), err)
-    }
+        rustCall {
+            library_995e_float_inc_test(value.lower(), $0)
+        }
     return try! Float.lift(_retval)
 }
 
 public func doubleIncTest(value: Double) -> Double {
-    let _retval = try! rustCall(
-        UniffiInternalError.unknown("rustCall")
+    let _retval = try!
 
-    ) { err in
-        library_8bbb_double_inc_test(value.lower(), err)
-    }
+        rustCall {
+            library_995e_double_inc_test(value.lower(), $0)
+        }
     return try! Double.lift(_retval)
 }
 
 public func stringIncTest(value: String) -> String {
-    let _retval = try! rustCall(
-        UniffiInternalError.unknown("rustCall")
+    let _retval = try!
 
-    ) { err in
-        library_8bbb_string_inc_test(value.lower(), err)
-    }
+        rustCall {
+            library_995e_string_inc_test(value.lower(), $0)
+        }
     return try! String.lift(_retval)
 }
 
 public func byrefIncTest(value: Point) -> Point {
-    let _retval = try! rustCall(
-        UniffiInternalError.unknown("rustCall")
+    let _retval = try!
 
-    ) { err in
-        library_8bbb_byref_inc_test(value.lower(), err)
-    }
+        rustCall {
+            library_995e_byref_inc_test(value.lower(), $0)
+        }
     return try! Point.lift(_retval)
 }
 
 public func optionalTypeIncTest(value: Int32?) -> Int32? {
-    let _retval = try! rustCall(
-        UniffiInternalError.unknown("rustCall")
+    let _retval = try!
 
-    ) { err in
-        library_8bbb_optional_type_inc_test(value.lower(), err)
-    }
+        rustCall {
+            library_995e_optional_type_inc_test(value.lower(), $0)
+        }
     return try! Int32?.lift(_retval)
 }
 
 public func vectorIncTest(value: [String]) -> [String] {
-    let _retval = try! rustCall(
-        UniffiInternalError.unknown("rustCall")
+    let _retval = try!
 
-    ) { err in
-        library_8bbb_vector_inc_test(value.lower(), err)
-    }
+        rustCall {
+            library_995e_vector_inc_test(value.lower(), $0)
+        }
     return try! [String].lift(_retval)
 }
 
 public func hashMapIncTest(value: [String: Int32]) -> [String: Int32] {
-    let _retval = try! rustCall(
-        UniffiInternalError.unknown("rustCall")
+    let _retval = try!
 
-    ) { err in
-        library_8bbb_hash_map_inc_test(value.lower(), err)
-    }
+        rustCall {
+            library_995e_hash_map_inc_test(value.lower(), $0)
+        }
     return try! [String: Int32].lift(_retval)
 }
 
 public func voidIncTest(value: Int32) {
-    try! rustCall(
-        UniffiInternalError.unknown("rustCall")
+    try!
 
-    ) { err in
-        library_8bbb_void_inc_test(value.lower(), err)
-    }
+        rustCall {
+            library_995e_void_inc_test(value.lower(), $0)
+        }
 }
 
 public func errorIncTest(a: UInt64, b: UInt64) throws -> UInt64 {
-    let _retval = try rustCall(
-        ArithmeticError.NoError
+    let _retval = try
 
-    ) { err in
-        library_8bbb_error_inc_test(a.lower(), b.lower(), err)
-    }
+        rustCallWithError(ArithmeticError.self) {
+            library_995e_error_inc_test(a.lower(), b.lower(), $0)
+        }
     return try UInt64.lift(_retval)
 }

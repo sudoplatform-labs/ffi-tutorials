@@ -6,7 +6,7 @@
 # Ideally this would live in a separate .py file where it can be unittested etc
 # in isolation, and perhaps even published as a re-useable package.
 #
-# However, it's important that the detils of how this helper code works (e.g. the
+# However, it's important that the details of how this helper code works (e.g. the
 # way that different builtin types are passed across the FFI) exactly match what's
 # expected by the rust code on the other side of the interface. In practice right
 # now that means coming from the exact some version of `uniffi` that was used to
@@ -27,20 +27,18 @@ class RustBuffer(ctypes.Structure):
         ("capacity", ctypes.c_int32),
         ("len", ctypes.c_int32),
         ("data", ctypes.POINTER(ctypes.c_char)),
-        # Ref https://github.com/mozilla/uniffi-rs/issues/334 for this weird "padding" field.
-        ("padding", ctypes.c_int64),
     ]
 
     @staticmethod
     def alloc(size):
-        return rust_call_with_error(InternalError, _UniFFILib.ffi_library_12e5_rustbuffer_alloc, size)
+        return rust_call(_UniFFILib.ffi_library_eadd_rustbuffer_alloc, size)
 
     @staticmethod
     def reserve(rbuf, additional):
-        return rust_call_with_error(InternalError, _UniFFILib.ffi_library_12e5_rustbuffer_reserve, rbuf, additional)
+        return rust_call(_UniFFILib.ffi_library_eadd_rustbuffer_reserve, rbuf, additional)
 
     def free(self):
-        return rust_call_with_error(InternalError, _UniFFILib.ffi_library_12e5_rustbuffer_free, self)
+        return rust_call(_UniFFILib.ffi_library_eadd_rustbuffer_free, self)
 
     def __str__(self):
         return "RustBuffer(capacity={}, len={}, data={})".format(
@@ -84,21 +82,30 @@ class RustBuffer(ctypes.Structure):
     # easier for us to hide these implementation details from consumers, in the face
     # of python's free-for-all type system.
 
+    # The primitive String type.
+
+    @staticmethod
+    def allocFromString(value):
+        with RustBuffer.allocWithBuilder() as builder:
+            builder.write(value.encode("utf-8"))
+            return builder.finalize()
+
+    def consumeIntoString(self):
+        with self.consumeWithStream() as stream:
+            return stream.read(stream.remaining()).decode("utf-8")
+
 
 class ForeignBytes(ctypes.Structure):
     _fields_ = [
         ("len", ctypes.c_int32),
         ("data", ctypes.POINTER(ctypes.c_char)),
-        # Ref https://github.com/mozilla/uniffi-rs/issues/334 for these weird "padding" fields.
-        ("padding", ctypes.c_int64),
-        ("padding2", ctypes.c_int32),
     ]
 
     def __str__(self):
         return "ForeignBytes(len={}, data={})".format(self.len, self.data[0:self.len])
 
 class RustBufferStream(object):
-    """Helper for structured reading of values from a RustBuffer."""
+    # Helper for structured reading of bytes from a RustBuffer
 
     def __init__(self, rbuf):
         self.rbuf = rbuf
@@ -121,22 +128,34 @@ class RustBufferStream(object):
         self.offset += size
         return data
 
+class RustBufferTypeReader(object):
     # For every type used in the interface, we provide helper methods for conveniently
     # reading that type in a buffer. Putting them on this internal helper object (rather
     # than, say, as methods on the public classes) makes it easier for us to hide these
     # implementation details from consumers, in the face of python's free-for-all type
     # system.
+    # This class holds the logic for *how* to read the types from a buffer - the buffer itself is
+    # always passed in, because the actual buffer might be owned by a different crate/module.
 
-    def readBool(self):
-        v = self._unpack_from(1, ">b")
+    @staticmethod
+    def readBool(stream):
+        v = stream._unpack_from(1, ">b")
         if v == 0:
             return False
         if v == 1:
             return True
         raise InternalError("Unexpected byte for Boolean type")
 
+    @staticmethod
+    def readString(stream):
+        size = stream._unpack_from(4, ">i")
+        if size < 0:
+            raise InternalError("Unexpected negative string length")
+        utf8Bytes = stream.read(size)
+        return utf8Bytes.decode("utf-8")
+
 class RustBufferBuilder(object):
-    """Helper for structured writing of values into a RustBuffer."""
+    # Helper for structured writing of bytes into a RustBuffer.
 
     def __init__(self):
         self.rbuf = RustBuffer.alloc(16)
@@ -170,51 +189,92 @@ class RustBufferBuilder(object):
             for i, byte in enumerate(value):
                 self.rbuf.data[self.rbuf.len + i] = byte
 
+class RustBufferTypeBuilder(object):
     # For every type used in the interface, we provide helper methods for conveniently
     # writing values of that type in a buffer. Putting them on this internal helper object
     # (rather than, say, as methods on the public classes) makes it easier for us to hide
     # these implementation details from consumers, in the face of python's free-for-all
     # type system.
+    # This class holds the logic for *how* to write the types to a buffer - the buffer itself is
+    # always passed in, because the actual buffer might be owned by a different crate/module.
 
-    def writeBool(self, v):
-        self._pack_into(1, ">b", 1 if v else 0)
+    @staticmethod
+    def writeBool(builder, v):
+        builder._pack_into(1, ">b", 1 if v else 0)
+
+    @staticmethod
+    def writeString(builder, v):
+        utf8Bytes = v.encode("utf-8")
+        builder._pack_into(4, ">i", len(utf8Bytes))
+        builder.write(utf8Bytes)
 
 # Error definitions
-class RustError(ctypes.Structure):
+class InternalError(Exception):
+    pass
+
+class RustCallStatus(ctypes.Structure):
     _fields_ = [
-        ("code", ctypes.c_int32),
-        ("message", ctypes.c_void_p),
+        ("code", ctypes.c_int8),
+        ("error_buf", RustBuffer),
     ]
 
-    def free(self):
-        rust_call_with_error(InternalError, _UniFFILib.ffi_library_12e5_string_free, self.message)
+    # These match the values from the uniffi::rustcalls module
+    CALL_SUCCESS = 0
+    CALL_ERROR = 1
+    CALL_PANIC = 2
 
     def __str__(self):
-        return "RustError(code={}, message={})".format(
-            self.code,
-            str(ctypes.cast(self.message, ctypes.c_char_p).value, "utf-8"),
-        )
+        if self.code == RustCallStatus.CALL_SUCCESS:
+            return "RustCallStatus(CALL_SUCCESS)"
+        elif self.code == RustCallStatus.CALL_ERROR:
+            return "RustCallStatus(CALL_ERROR)"
+        elif self.code == RustCallStatus.CALL_PANIC:
+            return "RustCallStatus(CALL_SUCCESS)"
+        else:
+            return "RustCallStatus(<invalid code>)"
 
-class InternalError(Exception):
-    @staticmethod
-    def raise_err(code, message):
-        raise InternalError(message)
+# Map error classes to the RustBufferTypeBuilder method to read them
+_error_class_to_reader_method = {
+}
 
+def consume_buffer_into_error(error_class, rust_buffer):
+    reader_method = _error_class_to_reader_method[error_class]
+    with rust_buffer.consumeWithStream() as stream:
+        return reader_method(stream)
 
+def rust_call(fn, *args):
+    # Call a rust function
+    return rust_call_with_error(None, fn, *args)
 
 def rust_call_with_error(error_class, fn, *args):
-    error = RustError()
-    error.code = 0
+    # Call a rust function and handle any errors
+    #
+    # This function is used for rust calls that return Result<> and therefore can set the CALL_ERROR status code.
+    # error_class must be set to the error class that corresponds to the result.
+    call_status = RustCallStatus(code=0, error_buf=RustBuffer(0, 0, None))
 
-    args_with_error = args + (ctypes.byref(error),)
+    args_with_error = args + (ctypes.byref(call_status),)
     result = fn(*args_with_error)
-    if error.code != 0:
-        message = str(error)
-        error.free()
-
-        error_class.raise_err(error.code, message)
-    
-    return result
+    if call_status.code == RustCallStatus.CALL_SUCCESS:
+        return result
+    elif call_status.code == RustCallStatus.CALL_ERROR:
+        if error_class is None:
+            call_status.err_buf.contents.free()
+            raise InternalError("rust_call_with_error: CALL_ERROR, but no error class set")
+        else:
+            raise consume_buffer_into_error(error_class, call_status.error_buf)
+    elif call_status.code == RustCallStatus.CALL_PANIC:
+        # When the rust code sees a panic, it tries to construct a RustBuffer
+        # with the message.  But if that code panics, then it just sends back
+        # an empty buffer.
+        if call_status.error_buf.len > 0:
+            msg = call_status.error_buf.consumeIntoString()
+        else:
+            msg = "Unknown rust panic"
+        raise InternalError(msg)
+    else:
+        raise InternalError("Invalid RustCallStatus code: {}".format(
+            call_status.code))
 
 # This is how we find and load the dynamic library provided by the component.
 # For now we just look it up by name.
@@ -243,37 +303,32 @@ def loadIndirect():
 # This is an implementation detail which will be called internally by the public API.
 
 _UniFFILib = loadIndirect()
-_UniFFILib.library_12e5_bool_inc_test.argtypes = (
+_UniFFILib.library_eadd_bool_inc_test.argtypes = (
     ctypes.c_int8,
-    ctypes.POINTER(RustError),
+    ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.library_12e5_bool_inc_test.restype = ctypes.c_int8
-_UniFFILib.ffi_library_12e5_rustbuffer_alloc.argtypes = (
+_UniFFILib.library_eadd_bool_inc_test.restype = ctypes.c_int8
+_UniFFILib.ffi_library_eadd_rustbuffer_alloc.argtypes = (
     ctypes.c_int32,
-    ctypes.POINTER(RustError),
+    ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.ffi_library_12e5_rustbuffer_alloc.restype = RustBuffer
-_UniFFILib.ffi_library_12e5_rustbuffer_from_bytes.argtypes = (
+_UniFFILib.ffi_library_eadd_rustbuffer_alloc.restype = RustBuffer
+_UniFFILib.ffi_library_eadd_rustbuffer_from_bytes.argtypes = (
     ForeignBytes,
-    ctypes.POINTER(RustError),
+    ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.ffi_library_12e5_rustbuffer_from_bytes.restype = RustBuffer
-_UniFFILib.ffi_library_12e5_rustbuffer_free.argtypes = (
+_UniFFILib.ffi_library_eadd_rustbuffer_from_bytes.restype = RustBuffer
+_UniFFILib.ffi_library_eadd_rustbuffer_free.argtypes = (
     RustBuffer,
-    ctypes.POINTER(RustError),
+    ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.ffi_library_12e5_rustbuffer_free.restype = None
-_UniFFILib.ffi_library_12e5_rustbuffer_reserve.argtypes = (
+_UniFFILib.ffi_library_eadd_rustbuffer_free.restype = None
+_UniFFILib.ffi_library_eadd_rustbuffer_reserve.argtypes = (
     RustBuffer,
     ctypes.c_int32,
-    ctypes.POINTER(RustError),
+    ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.ffi_library_12e5_rustbuffer_reserve.restype = RustBuffer
-_UniFFILib.ffi_library_12e5_string_free.argtypes = (
-    ctypes.c_void_p,
-    ctypes.POINTER(RustError),
-)
-_UniFFILib.ffi_library_12e5_string_free.restype = None
+_UniFFILib.ffi_library_eadd_rustbuffer_reserve.restype = RustBuffer
 
 # Public interface members begin here.
 
@@ -284,7 +339,7 @@ _UniFFILib.ffi_library_12e5_string_free.restype = None
 
 def bool_inc_test(value):
     value = bool(value)
-    _retval = rust_call_with_error(InternalError,_UniFFILib.library_12e5_bool_inc_test,(1 if value else 0))
+    _retval = rust_call(_UniFFILib.library_eadd_bool_inc_test,(1 if value else 0))
     return (True if _retval else False)
 
 

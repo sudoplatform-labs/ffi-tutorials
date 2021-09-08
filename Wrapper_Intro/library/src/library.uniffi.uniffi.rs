@@ -5,7 +5,7 @@
 // Note that we have an error message on the same line as the assertion.
 // This is important, because if the assertion fails, the compiler only
 // seems to show that single line as context for the user.
-uniffi::assert_compatible_version!("0.12.0"); // Please check that you depend on version 0.12.0 of the `uniffi` crate.
+uniffi::assert_compatible_version!("0.14.0"); // Please check that you depend on version 0.14.0 of the `uniffi` crate.
 
 // Everybody gets basic buffer support, since it's needed for passing complex types over the FFI.
 
@@ -15,11 +15,11 @@ uniffi::assert_compatible_version!("0.12.0"); // Please check that you depend on
 /// or by passing ownership of the buffer back into Rust code.
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn ffi_library_12e5_rustbuffer_alloc(
+pub extern "C" fn ffi_library_eadd_rustbuffer_alloc(
     size: i32,
-    err: &mut uniffi::deps::ffi_support::ExternError,
+    call_status: &mut uniffi::RustCallStatus,
 ) -> uniffi::RustBuffer {
-    uniffi::deps::ffi_support::call_with_output(err, || {
+    uniffi::call_with_output(call_status, || {
         uniffi::RustBuffer::new_with_size(size.max(0) as usize)
     })
 }
@@ -34,11 +34,11 @@ pub extern "C" fn ffi_library_12e5_rustbuffer_alloc(
 /// make sure the `ForeignBytes` struct contains a valid pointer and length.
 #[doc(hidden)]
 #[no_mangle]
-pub unsafe extern "C" fn ffi_library_12e5_rustbuffer_from_bytes(
+pub unsafe extern "C" fn ffi_library_eadd_rustbuffer_from_bytes(
     bytes: uniffi::ForeignBytes,
-    err: &mut uniffi::deps::ffi_support::ExternError,
+    call_status: &mut uniffi::RustCallStatus,
 ) -> uniffi::RustBuffer {
-    uniffi::deps::ffi_support::call_with_output(err, || {
+    uniffi::call_with_output(call_status, || {
         let bytes = bytes.as_slice();
         uniffi::RustBuffer::from_vec(bytes.to_vec())
     })
@@ -52,11 +52,11 @@ pub unsafe extern "C" fn ffi_library_12e5_rustbuffer_from_bytes(
 /// corrupting the allocator state.
 #[doc(hidden)]
 #[no_mangle]
-pub unsafe extern "C" fn ffi_library_12e5_rustbuffer_free(
+pub unsafe extern "C" fn ffi_library_eadd_rustbuffer_free(
     buf: uniffi::RustBuffer,
-    err: &mut uniffi::deps::ffi_support::ExternError,
+    call_status: &mut uniffi::RustCallStatus,
 ) {
-    uniffi::deps::ffi_support::call_with_output(err, || uniffi::RustBuffer::destroy(buf))
+    uniffi::call_with_output(call_status, || uniffi::RustBuffer::destroy(buf))
 }
 
 /// Reserve additional capacity in a byte buffer that had previously been passed to the
@@ -76,12 +76,12 @@ pub unsafe extern "C" fn ffi_library_12e5_rustbuffer_free(
 /// corrupting the allocator state.
 #[doc(hidden)]
 #[no_mangle]
-pub unsafe extern "C" fn ffi_library_12e5_rustbuffer_reserve(
+pub unsafe extern "C" fn ffi_library_eadd_rustbuffer_reserve(
     buf: uniffi::RustBuffer,
     additional: i32,
-    err: &mut uniffi::deps::ffi_support::ExternError,
+    call_status: &mut uniffi::RustCallStatus,
 ) -> uniffi::RustBuffer {
-    uniffi::deps::ffi_support::call_with_output(err, || {
+    uniffi::call_with_output(call_status, || {
         use std::convert::TryInto;
         let additional: usize = additional
             .try_into()
@@ -92,28 +92,7 @@ pub unsafe extern "C" fn ffi_library_12e5_rustbuffer_reserve(
     })
 }
 
-/// Free a String that had previously been passed to the foreign language code.
-///
-/// # Safety
-///
-/// In order to free the string, Rust takes ownership of a raw pointer which is an
-/// unsafe operation. The argument *must* be a uniquely-owned pointer previously
-/// obtained from a call into the rust code that returned a string.
-/// (In practice that means you got it from the `message` field of an `ExternError`,
-/// because that's currently the only place we use `char*` types in our API).
-#[doc(hidden)]
-#[no_mangle]
-pub unsafe extern "C" fn ffi_library_12e5_string_free(
-    cstr: *mut std::os::raw::c_char,
-    err: &mut uniffi::deps::ffi_support::ExternError,
-) {
-    uniffi::deps::ffi_support::call_with_output(err, || {
-        uniffi::deps::ffi_support::destroy_c_string(cstr)
-    })
-}
-
-// We generate error mappings into ffi_support::ExternErrors
-// so that the errors can propagate through the FFI
+// Error definitions, corresponding to `error` in the UDL.
 
 // Enum defitions, corresponding to `enum` in UDL.
 
@@ -121,22 +100,29 @@ pub unsafe extern "C" fn ffi_library_12e5_string_free(
 
 // Top level functions, corresponding to UDL `namespace` functions.
 
-#[allow(clippy::all)]
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn library_12e5_bool_inc_test(
+pub extern "C" fn library_eadd_bool_inc_test(
     value: i8,
-    err: &mut uniffi::deps::ffi_support::ExternError,
+    call_status: &mut uniffi::RustCallStatus,
 ) -> i8 {
     // If the provided function does not match the signature specified in the UDL
     // then this attempt to call it will not compile, and will give guidance as to why.
-    uniffi::deps::log::debug!("library_12e5_bool_inc_test");
+    uniffi::deps::log::debug!("library_eadd_bool_inc_test");
 
-    uniffi::deps::ffi_support::call_with_output(err, || {
-        let _retval = bool_inc_test(<bool as uniffi::ViaFfi>::try_lift(value).unwrap());
-        <bool as uniffi::ViaFfi>::lower(_retval)
+    uniffi::call_with_output(call_status, || {
+        <bool as uniffi::FfiConverter>::lower(bool_inc_test(
+            <bool as uniffi::FfiConverter>::try_lift(value).unwrap(),
+        ))
     })
 }
-// Object definitions, correspoding to UDL `interface` definitions.
+// Object definitions, corresponding to UDL `interface` definitions.
 
-// Callback Interface defitions, corresponding to UDL `callback interface` definitions.
+// Callback Interface definitions, corresponding to UDL `callback interface` definitions.
+
+// External and Wrapped types
+// Support for external types.
+
+// Types with an external `FfiConverter`...
+
+// More complicated locally `Wrapped` types - we generate FfiConverter.
