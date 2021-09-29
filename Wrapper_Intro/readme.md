@@ -67,14 +67,14 @@ Next, navigate into the new *library* sub-directory just created, open Cargo.tom
 
 ```
 [dependencies]
-uniffi = "0.12"
+uniffi = "0.14"
   
 [lib]
 name = "library"
 crate-type = ["cdylib"]
  
 [build-dependencies]
-uniffi_build = "0.12"
+uniffi_build = "0.14"
 ```
 
 These additions tell cargo to load uniffi version 0.8 and to create a cdylib named library.  
