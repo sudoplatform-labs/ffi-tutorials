@@ -58,7 +58,7 @@ build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-uniffi = "0.12"
+uniffi = "0.14"
 # includes the 'thiserror' crate.
 thiserror = "1.0"
 
@@ -67,7 +67,7 @@ name = "library"
 crate-type = ["cdylib"]
 
 [build-dependencies]
-uniffi_build = "0.12"
+uniffi_build = "0.14"
 ```
 
 These additions tell cargo to load uniffi version 0.8 and to create a cdylib named library.  
