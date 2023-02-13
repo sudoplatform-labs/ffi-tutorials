@@ -26,14 +26,14 @@ mod tests {
     #[test]
     pub fn internal() {
 
-	// Simulate a call over the C interface by creating a CString.
-	let message = "Hello World!";
+	    // Simulate a call over the C interface by creating a CString.
+	    let message = "Hello World!";
         let c_string = CString::new(message).expect("CString::new failed");
 
-	// Convert the c_string into a raw c_pointer. 
+	    // Convert the c_string into a raw c_pointer. 
         let c_pointer = c_string.into_raw();
 
-	// Call into the library function to count the characters.
+	    // Call into the library function to count the characters.
         let count = count_characters(c_pointer);
         println!("\nThe number of characters in {} = {}", message, count);
     }
