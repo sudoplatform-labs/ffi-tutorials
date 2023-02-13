@@ -11,15 +11,15 @@
 // We ensure they are declared exactly once, with a header guard, UNIFFI_SHARED_H.
 #ifdef UNIFFI_SHARED_H
     // We also try to prevent mixing versions of shared uniffi header structs.
-    // If you add anything to the #else block, you must increment the version suffix in UNIFFI_SHARED_HEADER_V3
-    #ifndef UNIFFI_SHARED_HEADER_V3
+    // If you add anything to the #else block, you must increment the version suffix in UNIFFI_SHARED_HEADER_V4
+    #ifndef UNIFFI_SHARED_HEADER_V4
         #error Combining helper code from multiple versions of uniffi is not supported
-    #endif // ndef UNIFFI_SHARED_HEADER_V3
+    #endif // ndef UNIFFI_SHARED_HEADER_V4
 #else
 #define UNIFFI_SHARED_H
-#define UNIFFI_SHARED_HEADER_V3
+#define UNIFFI_SHARED_HEADER_V4
 // ⚠️ Attention: If you change this #else block (ending in `#endif // def UNIFFI_SHARED_H`) you *must* ⚠️
-// ⚠️ increment the version suffix in all instances of UNIFFI_SHARED_HEADER_V3 in this file.           ⚠️
+// ⚠️ increment the version suffix in all instances of UNIFFI_SHARED_HEADER_V4 in this file.           ⚠️
 
 typedef struct RustBuffer
 {
@@ -27,6 +27,8 @@ typedef struct RustBuffer
     int32_t len;
     uint8_t *_Nullable data;
 } RustBuffer;
+
+typedef int32_t (*ForeignCallback)(uint64_t, int32_t, RustBuffer, RustBuffer *_Nonnull);
 
 typedef struct ForeignBytes
 {
@@ -41,94 +43,94 @@ typedef struct RustCallStatus {
 } RustCallStatus;
 
 // ⚠️ Attention: If you change this #else block (ending in `#endif // def UNIFFI_SHARED_H`) you *must* ⚠️
-// ⚠️ increment the version suffix in all instances of UNIFFI_SHARED_HEADER_V3 in this file.           ⚠️
+// ⚠️ increment the version suffix in all instances of UNIFFI_SHARED_HEADER_V4 in this file.           ⚠️
 #endif // def UNIFFI_SHARED_H
 
-int8_t library_995e_bool_inc_test(
+int8_t library_635_bool_inc_test(
       int8_t value,
     RustCallStatus *_Nonnull out_status
     );
-int8_t library_995e_i8_inc_test(
+int8_t library_635_i8_inc_test(
       int8_t value,
     RustCallStatus *_Nonnull out_status
     );
-int16_t library_995e_i16_inc_test(
+int16_t library_635_i16_inc_test(
       int16_t value,
     RustCallStatus *_Nonnull out_status
     );
-int32_t library_995e_i32_inc_test(
+int32_t library_635_i32_inc_test(
       int32_t value,
     RustCallStatus *_Nonnull out_status
     );
-int64_t library_995e_i64_inc_test(
+int64_t library_635_i64_inc_test(
       int64_t value,
     RustCallStatus *_Nonnull out_status
     );
-uint8_t library_995e_u8_inc_test(
+uint8_t library_635_u8_inc_test(
       uint8_t value,
     RustCallStatus *_Nonnull out_status
     );
-uint16_t library_995e_u16_inc_test(
+uint16_t library_635_u16_inc_test(
       uint16_t value,
     RustCallStatus *_Nonnull out_status
     );
-uint32_t library_995e_u32_inc_test(
+uint32_t library_635_u32_inc_test(
       uint32_t value,
     RustCallStatus *_Nonnull out_status
     );
-uint64_t library_995e_u64_inc_test(
+uint64_t library_635_u64_inc_test(
       uint64_t value,
     RustCallStatus *_Nonnull out_status
     );
-float library_995e_float_inc_test(
+float library_635_float_inc_test(
       float value,
     RustCallStatus *_Nonnull out_status
     );
-double library_995e_double_inc_test(
+double library_635_double_inc_test(
       double value,
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer library_995e_string_inc_test(
+RustBuffer library_635_string_inc_test(
       RustBuffer value,
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer library_995e_byref_inc_test(
+RustBuffer library_635_byref_inc_test(
       RustBuffer value,
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer library_995e_optional_type_inc_test(
+RustBuffer library_635_optional_type_inc_test(
       RustBuffer value,
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer library_995e_vector_inc_test(
+RustBuffer library_635_vector_inc_test(
       RustBuffer value,
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer library_995e_hash_map_inc_test(
+RustBuffer library_635_hash_map_inc_test(
       RustBuffer value,
     RustCallStatus *_Nonnull out_status
     );
-void library_995e_void_inc_test(
+void library_635_void_inc_test(
       int32_t value,
     RustCallStatus *_Nonnull out_status
     );
-uint64_t library_995e_error_inc_test(
+uint64_t library_635_error_inc_test(
       uint64_t a,uint64_t b,
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer ffi_library_995e_rustbuffer_alloc(
+RustBuffer ffi_library_635_rustbuffer_alloc(
       int32_t size,
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer ffi_library_995e_rustbuffer_from_bytes(
+RustBuffer ffi_library_635_rustbuffer_from_bytes(
       ForeignBytes bytes,
     RustCallStatus *_Nonnull out_status
     );
-void ffi_library_995e_rustbuffer_free(
+void ffi_library_635_rustbuffer_free(
       RustBuffer buf,
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer ffi_library_995e_rustbuffer_reserve(
+RustBuffer ffi_library_635_rustbuffer_reserve(
       RustBuffer buf,int32_t additional,
     RustCallStatus *_Nonnull out_status
     );

@@ -5,91 +5,47 @@
 // Note that we have an error message on the same line as the assertion.
 // This is important, because if the assertion fails, the compiler only
 // seems to show that single line as context for the user.
-uniffi::assert_compatible_version!("0.14.0"); // Please check that you depend on version 0.14.0 of the `uniffi` crate.
+uniffi::assert_compatible_version!("0.22.0"); // Please check that you depend on version 0.22.0 of the `uniffi` crate.
 
 // Everybody gets basic buffer support, since it's needed for passing complex types over the FFI.
+//
+// See `uniffi/src/ffi/rustbuffer.rs` for documentation on these functions
 
-/// This helper allocates a new byte buffer owned by the Rust code, and returns it
-/// to the foreign-language code as a `RustBuffer` struct. Callers must eventually
-/// free the resulting buffer, either by explicitly calling the destructor defined below,
-/// or by passing ownership of the buffer back into Rust code.
-#[doc(hidden)]
+#[allow(clippy::missing_safety_doc)]
 #[no_mangle]
-pub extern "C" fn ffi_library_eadd_rustbuffer_alloc(
+pub extern "C" fn ffi_library_788c_rustbuffer_alloc(
     size: i32,
     call_status: &mut uniffi::RustCallStatus,
 ) -> uniffi::RustBuffer {
-    uniffi::call_with_output(call_status, || {
-        uniffi::RustBuffer::new_with_size(size.max(0) as usize)
-    })
+    uniffi::ffi::uniffi_rustbuffer_alloc(size, call_status)
 }
 
-/// This helper copies bytes owned by the foreign-language code into a new byte buffer owned
-/// by the Rust code, and returns it as a `RustBuffer` struct. Callers must eventually
-/// free the resulting buffer, either by explicitly calling the destructor defined below,
-/// or by passing ownership of the buffer back into Rust code.
-///
-/// # Safety
-/// This function will dereference a provided pointer in order to copy bytes from it, so
-/// make sure the `ForeignBytes` struct contains a valid pointer and length.
-#[doc(hidden)]
+#[allow(clippy::missing_safety_doc)]
 #[no_mangle]
-pub unsafe extern "C" fn ffi_library_eadd_rustbuffer_from_bytes(
+pub unsafe extern "C" fn ffi_library_788c_rustbuffer_from_bytes(
     bytes: uniffi::ForeignBytes,
     call_status: &mut uniffi::RustCallStatus,
 ) -> uniffi::RustBuffer {
-    uniffi::call_with_output(call_status, || {
-        let bytes = bytes.as_slice();
-        uniffi::RustBuffer::from_vec(bytes.to_vec())
-    })
+    uniffi::ffi::uniffi_rustbuffer_from_bytes(bytes, call_status)
 }
 
-/// Free a byte buffer that had previously been passed to the foreign language code.
-///
-/// # Safety
-/// The argument *must* be a uniquely-owned `RustBuffer` previously obtained from a call
-/// into the Rust code that returned a buffer, or you'll risk freeing unowned memory or
-/// corrupting the allocator state.
-#[doc(hidden)]
+#[allow(clippy::missing_safety_doc)]
 #[no_mangle]
-pub unsafe extern "C" fn ffi_library_eadd_rustbuffer_free(
+pub unsafe extern "C" fn ffi_library_788c_rustbuffer_free(
     buf: uniffi::RustBuffer,
     call_status: &mut uniffi::RustCallStatus,
 ) {
-    uniffi::call_with_output(call_status, || uniffi::RustBuffer::destroy(buf))
+    uniffi::ffi::uniffi_rustbuffer_free(buf, call_status)
 }
 
-/// Reserve additional capacity in a byte buffer that had previously been passed to the
-/// foreign language code.
-///
-/// The first argument *must* be a uniquely-owned `RustBuffer` previously
-/// obtained from a call into the Rust code that returned a buffer. Its underlying data pointer
-/// will be reallocated if necessary and returned in a new `RustBuffer` struct.
-///
-/// The second argument must be the minimum number of *additional* bytes to reserve
-/// capacity for in the buffer; it is likely to reserve additional capacity in practice
-/// due to amortized growth strategy of Rust vectors.
-///
-/// # Safety
-/// The first argument *must* be a uniquely-owned `RustBuffer` previously obtained from a call
-/// into the Rust code that returned a buffer, or you'll risk freeing unowned memory or
-/// corrupting the allocator state.
-#[doc(hidden)]
+#[allow(clippy::missing_safety_doc)]
 #[no_mangle]
-pub unsafe extern "C" fn ffi_library_eadd_rustbuffer_reserve(
+pub unsafe extern "C" fn ffi_library_788c_rustbuffer_reserve(
     buf: uniffi::RustBuffer,
     additional: i32,
     call_status: &mut uniffi::RustCallStatus,
 ) -> uniffi::RustBuffer {
-    uniffi::call_with_output(call_status, || {
-        use std::convert::TryInto;
-        let additional: usize = additional
-            .try_into()
-            .expect("additional buffer length negative or overflowed");
-        let mut v = buf.destroy_into_vec();
-        v.reserve(additional);
-        uniffi::RustBuffer::from_vec(v)
-    })
+    uniffi::ffi::uniffi_rustbuffer_reserve(buf, additional, call_status)
 }
 
 // Error definitions, corresponding to `error` in the UDL.
@@ -102,17 +58,21 @@ pub unsafe extern "C" fn ffi_library_eadd_rustbuffer_reserve(
 
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn library_eadd_bool_inc_test(
-    value: i8,
+#[allow(clippy::let_unit_value)] // Sometimes we generate code that binds `_retval` to `()`.
+pub extern "C" fn r#library_788c_bool_inc_test(
+    r#value: i8,
     call_status: &mut uniffi::RustCallStatus,
 ) -> i8 {
     // If the provided function does not match the signature specified in the UDL
     // then this attempt to call it will not compile, and will give guidance as to why.
-    uniffi::deps::log::debug!("library_eadd_bool_inc_test");
+    uniffi::deps::log::debug!("library_788c_bool_inc_test");
 
     uniffi::call_with_output(call_status, || {
-        <bool as uniffi::FfiConverter>::lower(bool_inc_test(
-            <bool as uniffi::FfiConverter>::try_lift(value).unwrap(),
+        <bool as uniffi::FfiConverter>::lower(r#bool_inc_test(
+            match <bool as uniffi::FfiConverter>::try_lift(r#value) {
+                Ok(val) => val,
+                Err(err) => panic!("Failed to convert arg '{}': {}", "value", err),
+            },
         ))
     })
 }
@@ -125,4 +85,33 @@ pub extern "C" fn library_eadd_bool_inc_test(
 
 // Types with an external `FfiConverter`...
 
-// More complicated locally `Wrapped` types - we generate FfiConverter.
+// For custom scaffolding types we need to generate an FfiConverterType based on the
+// UniffiCustomTypeConverter implementation that the library supplies
+
+// The `reexport_uniffi_scaffolding` macro
+// Code to re-export the UniFFI scaffolding functions.
+//
+// Rust won't always re-export the functions from dependencies
+// ([rust-lang#50007](https://github.com/rust-lang/rust/issues/50007))
+//
+// A workaround for this is to have the dependent crate reference a function from its dependency in
+// an extern "C" function. This is clearly hacky and brittle, but at least we have some unittests
+// that check if this works (fixtures/reexport-scaffolding-macro).
+//
+// The main way we use this macro is for that contain multiple UniFFI components (libxul,
+// megazord).  The combined library has a cargo dependency for each component and calls
+// uniffi_reexport_scaffolding!() for each one.
+
+#[doc(hidden)]
+pub fn uniffi_reexport_hack() {}
+
+#[macro_export]
+macro_rules! uniffi_reexport_scaffolding {
+    () => {
+        #[doc(hidden)]
+        #[no_mangle]
+        pub extern "C" fn library_uniffi_reexport_hack() {
+            $crate::uniffi_reexport_hack()
+        }
+    };
+}

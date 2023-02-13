@@ -53,8 +53,9 @@ With the uniffi tools, the high-level wrapper generation process is as follows:
 Installing the uniffi tools is easily performed with *cargo*, as follows:
 
 ```
-cargo install uniffi_bindgen
+cargo install uniffi_bindgen@0.22.0
 ```
+Note:  at the time this tutorial was last updated, uniffi-bindgen version 0.22.0 is the most current stable version.  The '@0.22.0' segment above informs cargo which version to install.  Future uniffi-bindgen versions can be installed by specifying the particular version.
 
 ## Creating the Rust Library
 To get started, open a terminal window and create a project directory that will contain each of the library and applications for this tutorial.  In the terminal, navigate to the project directory and create a new Rust library called *library*, as follows:
@@ -67,14 +68,14 @@ Next, navigate into the new *library* sub-directory just created, open Cargo.tom
 
 ```
 [dependencies]
-uniffi = "0.14"
+uniffi = "0.22"
   
 [lib]
 name = "library"
 crate-type = ["cdylib"]
  
 [build-dependencies]
-uniffi_build = "0.14"
+uniffi_build = "0.22"
 ```
 
 These additions tell cargo to load uniffi version 0.8 and to create a cdylib named library.  
@@ -113,25 +114,29 @@ The scaffolding layer is set of code that exposes the library's API and serializ
 uniffi-bindgen scaffolding ./src/library.uniffi.udl
 ```
 
-Executing this command will create a file called *./src/library.uniffi.uniffi.rs*. It is important to *not* modify this file.  However, viewing it in a code editor will show that ~143 lines of Rust code have been created. This code constitutes the FFI and contains numerous comments describing its operation.  The FFI routine correspondig to the API function, bool_inc_test( ), created above is found at line ~118 and is as follows:
+Executing this command will create a file called *./src/library.uniffi.uniffi.rs*. It is important to *not* modify this file.  However, viewing it in a code editor will show that ~118 lines of Rust code have been created. This code constitutes the FFI and contains numerous comments describing its operation.  The FFI routine correspondig to the API function, bool_inc_test( ), created above is found at line ~59 and is as follows:
 
 ```
-124 #[allow(clippy::all)]
-125 #[doc(hidden)]
-126 #[no_mangle]
-127 pub extern "C" fn library_12e5_bool_inc_test(
-128     value: i8,
-129     err: &mut uniffi::deps::ffi_support::ExternError,
-130 ) -> i8 {
-131     // If the provided function does not match the signature specified in the UDL
-132     // then this attempt to call it will not compile, and will give guidance as to why.
-133     uniffi::deps::log::debug!("library_12e5_bool_inc_test");
-134 
-135     uniffi::deps::ffi_support::call_with_output(err, || {
-136         let _retval = bool_inc_test(<bool as uniffi::ViaFfi>::try_lift(value).unwrap());
-137         <bool as uniffi::ViaFfi>::lower(_retval)
-138     })
-139 }
+59  #[doc(hidden)]
+60  #[no_mangle]
+61  #[allow(clippy::let_unit_value)] // Sometimes we generate code that binds `_retval` to `()`.
+62  pub extern "C" fn r#library_788c_bool_inc_test(
+63      r#value: i8,
+64      call_status: &mut uniffi::RustCallStatus,
+65  ) -> i8 {
+66      // If the provided function does not match the signature specified in the UDL
+67      // then this attempt to call it will not compile, and will give guidance as to why.
+68      uniffi::deps::log::debug!("library_788c_bool_inc_test");
+69 
+70      uniffi::call_with_output(call_status, || {
+71          <bool as uniffi::FfiConverter>::lower(r#bool_inc_test(
+72              match <bool as uniffi::FfiConverter>::try_lift(r#value) {
+73                  Ok(val) => val,
+74                  Err(err) => panic!("Failed to convert arg '{}': {}", "value", err),
+75              },
+76          ))
+77      })
+78  }
 ```
 
 While this code contains a valid FFI function and can be called, it is also in a format that might appear a little strange to application programmers who are not also C-programmers.  For that reason a language-specific wrapper function can simplify calls into the library.
@@ -175,21 +180,23 @@ brew install swiftformat
 
 Once SwiftFormat is installed, run the uniffi-bindgen command again and the generated Swift-language code will be regenerated and formatted without a warning message.
 
-This process generates a file called *library.swift* that has ~500 lines of code.  The last function in the file contains the Swift representation of the bool_inc_test( ) function and appears as follows:
+This process generates a file called *library.swift* that has ~365 lines of code.  The last function in the file contains the Swift representation of the bool_inc_test( ) function and appears as follows:
 
 ```
-566 public func boolIncTest(value: Bool) -> Bool {
-567     let _retval = try! rustCall(
-568         UniffiInternalError.unknown("rustCall")
-569 
-570     ) { err in
-571         library_12e5_bool_inc_test(value.lower(), err)
-572     }
-573     return try! Bool.lift(_retval)
-574 }
+342  public func boolIncTest(value: Bool) -> Bool {
+343      return try! FfiConverterBool.lift(
+344          try!
+345
+346              rustCall {
+347                  library_788c_bool_inc_test(
+348                      FfiConverterBool.lower(value), $0
+349                  )
+350              }
+351      )
+352  }
 ```
 
-Notice that the Swift function has been formatted in the style of other Swift source code -- even the name has been converted from *snake case* (used in Rust) to *camel case* (used in Swift).  Additionally, this Swift function invokes (on line 497) the function, library_12e5_bool_inc_test( ), that was generated in *./src/library.uniffi.uniffi.rs* above.  
+Notice that the Swift function has been formatted in the style of other Swift source code -- even the name has been converted from *snake case* (used in Rust) to *camel case* (used in Swift).  Additionally, this Swift function invokes (on line 347) the function, library_788c_bool_inc_test( ), that was generated in *./src/library.uniffi.uniffi.rs* above.  
 
 Although, this language wrapper generation step isn't strictly necessary from an FFI perspective, it is of notable value to the Swift programmers who will import the library.  This step allows them to interface with a code interface to the library the looks and feels like Swift rather than having to learn how to call C programming interfaces.
 
@@ -215,16 +222,17 @@ brew install yapf
 
 Once yapf is installed, run the uniffi-bindgen command again and the generated Python-language code will be regenerated and formatted without a warning message.
 
-This process generates a file called *library.py* that has ~300 lines of code.  The last function in the file contains the Python representation of the bool_inc_test( ) function and appears as follows:
+This process generates a file called *library.py* that has ~433 lines of code.  The last function in the file contains the Python representation of the bool_inc_test( ) function and appears as follows:
 
 ```
-285 def bool_inc_test(value):
-286     value = bool(value)
-287     _retval = rust_call_with_error(InternalError,_UniFFILib.library_12e5_bool_inc_test,(1 if value else 0))
-288     return (True if _retval else False)
+420  def bool_inc_test(value):
+421      value = bool(value)
+422
+423      return FfiConverterBool.lift(rust_call(_UniFFILib.library_788c_bool_inc_test,
+424          FfiConverterBool.lower(value)))
 ```
 
-Notice that the Python function has been formatted in the style of other Python source code.  Additionally, this Python function invokes (on line 497) the function, library_a699_bool_inc_test( ), that was generated in *./src/library.uniffi.uniffi.rs* above.  
+Notice that the Python function has been formatted in the style of other Python source code.  Additionally, this Python function invokes (on line 423) the function, library_788c_bool_inc_test( ), that was generated in *./src/library.uniffi.uniffi.rs* above.  
 
 Although, this language wrapper generation step isn't strictly necessary from an FFI perspective, it is of notable value to the Python programmers who will import the library.  This step allows them to interface with a code interface to the library the looks and feels like Python rather than having to learn how to call C programming interfaces.
 
@@ -255,13 +263,15 @@ The preceeding steps will result in an empty, but runnable, Swift-based command 
 At this point, the test app should import the required files, link to the library, and run ... without doing anything.  To test the library, it is necessary to add some function calls to *main.swift*, as follows:
 
 ```
-1	//
-2	//  main.swift
-3	//  swift_test_app
-4
-5	import Foundation
-6
-7	print(" --- Running boolean test ---")
+1  //
+2  //  main.swift
+3  //  swift_test_app
+4  //
+5  //  Created by Steven H. McCown on 2/9/21.
+6  //
+7	import Foundation
+8
+9	print(" --- Running boolean test ---")
 8	let valueBool: Bool = false
 9	var resultBool: Bool = boolIncTest(value: valueBool)
 10	assert(!valueBool == resultBool, "Bool test failed")
@@ -272,7 +282,8 @@ At this point, the test app should import the required files, link to the librar
 In this very simple test, *valueBool* is initialized to *false* on line 8.  This value is passed to the function *boolIncTest( )* on line 9 and the return value is stored in resultBool.  On line 10, an assert statement compares the 2 values to ensure that they are different.  If *boolIncTest( )* is successfuly called from the linked library and a valid result value is received, then the following message should be displayed:
 
 ```
- --- Running boolean test ---
+ --- Running Tests --- 
+Running boolean test...
  --- All Tests Succeded! --- 
 Program ended with exit code: 0
 ```
@@ -284,7 +295,7 @@ Creating the Python test application is much simpler than the Swift version, bec
 
 1. Go to the tutorial main directory and create a sub-directory called *python_test_app* and navigate into it
 2. Copy the required library files into *python_test_app*
-	1. ./library/target/debug/libuniffi_library.dylib (*Note:  currently, building the Rust library creates a filed called liblibrary.dylib.  As part of this copy step, the library should be renamed as libuniffi_library.dylib.  This descrepancy will likely be resolved in future versions of uniffi.*)
+	1. ./library/target/debug/libuniffi_library.dylib (*Note:  currently, building the Rust library creates a filed called liblibrary.dylib.  As part of this copy step, the library should be renamed as libuniffi__library.dylib.  This descrepancy will likely be resolved in future versions of uniffi.*)
 	2. ./library/src/library.py
 3. Create the main Python application file (main.py) and add the following:
 

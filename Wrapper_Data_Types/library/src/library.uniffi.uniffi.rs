@@ -5,117 +5,74 @@
 // Note that we have an error message on the same line as the assertion.
 // This is important, because if the assertion fails, the compiler only
 // seems to show that single line as context for the user.
-uniffi::assert_compatible_version!("0.14.0"); // Please check that you depend on version 0.14.0 of the `uniffi` crate.
+uniffi::assert_compatible_version!("0.22.0"); // Please check that you depend on version 0.22.0 of the `uniffi` crate.
+
+uniffi::deps::static_assertions::assert_impl_all!(String: ::std::cmp::Eq, ::std::hash::Hash); // record<String, i32>
 
 // Everybody gets basic buffer support, since it's needed for passing complex types over the FFI.
+//
+// See `uniffi/src/ffi/rustbuffer.rs` for documentation on these functions
 
-/// This helper allocates a new byte buffer owned by the Rust code, and returns it
-/// to the foreign-language code as a `RustBuffer` struct. Callers must eventually
-/// free the resulting buffer, either by explicitly calling the destructor defined below,
-/// or by passing ownership of the buffer back into Rust code.
-#[doc(hidden)]
+#[allow(clippy::missing_safety_doc)]
 #[no_mangle]
-pub extern "C" fn ffi_library_995e_rustbuffer_alloc(
+pub extern "C" fn ffi_library_635_rustbuffer_alloc(
     size: i32,
     call_status: &mut uniffi::RustCallStatus,
 ) -> uniffi::RustBuffer {
-    uniffi::call_with_output(call_status, || {
-        uniffi::RustBuffer::new_with_size(size.max(0) as usize)
-    })
+    uniffi::ffi::uniffi_rustbuffer_alloc(size, call_status)
 }
 
-/// This helper copies bytes owned by the foreign-language code into a new byte buffer owned
-/// by the Rust code, and returns it as a `RustBuffer` struct. Callers must eventually
-/// free the resulting buffer, either by explicitly calling the destructor defined below,
-/// or by passing ownership of the buffer back into Rust code.
-///
-/// # Safety
-/// This function will dereference a provided pointer in order to copy bytes from it, so
-/// make sure the `ForeignBytes` struct contains a valid pointer and length.
-#[doc(hidden)]
+#[allow(clippy::missing_safety_doc)]
 #[no_mangle]
-pub unsafe extern "C" fn ffi_library_995e_rustbuffer_from_bytes(
+pub unsafe extern "C" fn ffi_library_635_rustbuffer_from_bytes(
     bytes: uniffi::ForeignBytes,
     call_status: &mut uniffi::RustCallStatus,
 ) -> uniffi::RustBuffer {
-    uniffi::call_with_output(call_status, || {
-        let bytes = bytes.as_slice();
-        uniffi::RustBuffer::from_vec(bytes.to_vec())
-    })
+    uniffi::ffi::uniffi_rustbuffer_from_bytes(bytes, call_status)
 }
 
-/// Free a byte buffer that had previously been passed to the foreign language code.
-///
-/// # Safety
-/// The argument *must* be a uniquely-owned `RustBuffer` previously obtained from a call
-/// into the Rust code that returned a buffer, or you'll risk freeing unowned memory or
-/// corrupting the allocator state.
-#[doc(hidden)]
+#[allow(clippy::missing_safety_doc)]
 #[no_mangle]
-pub unsafe extern "C" fn ffi_library_995e_rustbuffer_free(
+pub unsafe extern "C" fn ffi_library_635_rustbuffer_free(
     buf: uniffi::RustBuffer,
     call_status: &mut uniffi::RustCallStatus,
 ) {
-    uniffi::call_with_output(call_status, || uniffi::RustBuffer::destroy(buf))
+    uniffi::ffi::uniffi_rustbuffer_free(buf, call_status)
 }
 
-/// Reserve additional capacity in a byte buffer that had previously been passed to the
-/// foreign language code.
-///
-/// The first argument *must* be a uniquely-owned `RustBuffer` previously
-/// obtained from a call into the Rust code that returned a buffer. Its underlying data pointer
-/// will be reallocated if necessary and returned in a new `RustBuffer` struct.
-///
-/// The second argument must be the minimum number of *additional* bytes to reserve
-/// capacity for in the buffer; it is likely to reserve additional capacity in practice
-/// due to amortized growth strategy of Rust vectors.
-///
-/// # Safety
-/// The first argument *must* be a uniquely-owned `RustBuffer` previously obtained from a call
-/// into the Rust code that returned a buffer, or you'll risk freeing unowned memory or
-/// corrupting the allocator state.
-#[doc(hidden)]
+#[allow(clippy::missing_safety_doc)]
 #[no_mangle]
-pub unsafe extern "C" fn ffi_library_995e_rustbuffer_reserve(
+pub unsafe extern "C" fn ffi_library_635_rustbuffer_reserve(
     buf: uniffi::RustBuffer,
     additional: i32,
     call_status: &mut uniffi::RustCallStatus,
 ) -> uniffi::RustBuffer {
-    uniffi::call_with_output(call_status, || {
-        use std::convert::TryInto;
-        let additional: usize = additional
-            .try_into()
-            .expect("additional buffer length negative or overflowed");
-        let mut v = buf.destroy_into_vec();
-        v.reserve(additional);
-        uniffi::RustBuffer::from_vec(v)
-    })
+    uniffi::ffi::uniffi_rustbuffer_reserve(buf, additional, call_status)
 }
 
 // Error definitions, corresponding to `error` in the UDL.
 
+#[doc(hidden)]
 pub struct FfiConverterTypeArithmeticError;
 
 #[doc(hidden)]
 impl uniffi::RustBufferFfiConverter for FfiConverterTypeArithmeticError {
-    type RustType = ArithmeticError;
+    type RustType = r#ArithmeticError;
 
     // For "flat" error enums, we stringify the error on the Rust side and surface that
     // as the error message in the foreign language.
 
-    fn write(obj: ArithmeticError, buf: &mut std::vec::Vec<u8>) {
+    fn write(obj: r#ArithmeticError, buf: &mut std::vec::Vec<u8>) {
         use uniffi::deps::bytes::BufMut;
         let msg = obj.to_string();
         match obj {
-            ArithmeticError::IntegerOverflow { .. } => {
+            r#ArithmeticError::r#IntegerOverflow { .. } => {
                 buf.put_i32(1);
                 <String as uniffi::FfiConverter>::write(msg, buf);
             }
         };
     }
-
-    fn try_read(_buf: &mut &[u8]) -> uniffi::deps::anyhow::Result<ArithmeticError> {
-        // It's not currently possible to send errors from the foreign language *into* Rust.
+    fn try_read(_buf: &mut &[u8]) -> uniffi::deps::anyhow::Result<r#ArithmeticError> {
         panic!("try_read not supported for flat errors");
     }
 }
@@ -126,23 +83,24 @@ impl uniffi::FfiError for FfiConverterTypeArithmeticError {}
 
 // Record definitions, implemented as method-less structs, corresponding to `dictionary` objects.
 
+#[doc(hidden)]
 pub struct FfiConverterTypePoint;
 
 #[doc(hidden)]
 impl uniffi::RustBufferFfiConverter for FfiConverterTypePoint {
-    type RustType = Point;
+    type RustType = r#Point;
 
-    fn write(obj: Point, buf: &mut std::vec::Vec<u8>) {
+    fn write(obj: r#Point, buf: &mut std::vec::Vec<u8>) {
         // If the provided struct doesn't match the fields declared in the UDL, then
         // the generated code here will fail to compile with somewhat helpful error.
-        <f64 as uniffi::FfiConverter>::write(obj.x, buf);
-        <f64 as uniffi::FfiConverter>::write(obj.y, buf);
+        <f64 as uniffi::FfiConverter>::write(obj.r#x, buf);
+        <f64 as uniffi::FfiConverter>::write(obj.r#y, buf);
     }
 
-    fn try_read(buf: &mut &[u8]) -> uniffi::deps::anyhow::Result<Point> {
-        Ok(Point {
-            x: <f64 as uniffi::FfiConverter>::try_read(buf)?,
-            y: <f64 as uniffi::FfiConverter>::try_read(buf)?,
+    fn try_read(buf: &mut &[u8]) -> uniffi::deps::anyhow::Result<r#Point> {
+        Ok(r#Point {
+            r#x: <f64 as uniffi::FfiConverter>::try_read(buf)?,
+            r#y: <f64 as uniffi::FfiConverter>::try_read(buf)?,
         })
     }
 }
@@ -151,304 +109,393 @@ impl uniffi::RustBufferFfiConverter for FfiConverterTypePoint {
 
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn library_995e_bool_inc_test(
-    value: i8,
+#[allow(clippy::let_unit_value)] // Sometimes we generate code that binds `_retval` to `()`.
+pub extern "C" fn r#library_635_bool_inc_test(
+    r#value: i8,
     call_status: &mut uniffi::RustCallStatus,
 ) -> i8 {
     // If the provided function does not match the signature specified in the UDL
     // then this attempt to call it will not compile, and will give guidance as to why.
-    uniffi::deps::log::debug!("library_995e_bool_inc_test");
+    uniffi::deps::log::debug!("library_635_bool_inc_test");
 
     uniffi::call_with_output(call_status, || {
-        <bool as uniffi::FfiConverter>::lower(bool_inc_test(
-            <bool as uniffi::FfiConverter>::try_lift(value).unwrap(),
+        <bool as uniffi::FfiConverter>::lower(r#bool_inc_test(
+            match <bool as uniffi::FfiConverter>::try_lift(r#value) {
+                Ok(val) => val,
+                Err(err) => panic!("Failed to convert arg '{}': {}", "value", err),
+            },
         ))
     })
 }
 
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn library_995e_i8_inc_test(
-    value: i8,
+#[allow(clippy::let_unit_value)] // Sometimes we generate code that binds `_retval` to `()`.
+pub extern "C" fn r#library_635_i8_inc_test(
+    r#value: i8,
     call_status: &mut uniffi::RustCallStatus,
 ) -> i8 {
     // If the provided function does not match the signature specified in the UDL
     // then this attempt to call it will not compile, and will give guidance as to why.
-    uniffi::deps::log::debug!("library_995e_i8_inc_test");
+    uniffi::deps::log::debug!("library_635_i8_inc_test");
 
     uniffi::call_with_output(call_status, || {
-        <i8 as uniffi::FfiConverter>::lower(i8_inc_test(
-            <i8 as uniffi::FfiConverter>::try_lift(value).unwrap(),
+        <i8 as uniffi::FfiConverter>::lower(r#i8_inc_test(
+            match <i8 as uniffi::FfiConverter>::try_lift(r#value) {
+                Ok(val) => val,
+                Err(err) => panic!("Failed to convert arg '{}': {}", "value", err),
+            },
         ))
     })
 }
 
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn library_995e_i16_inc_test(
-    value: i16,
+#[allow(clippy::let_unit_value)] // Sometimes we generate code that binds `_retval` to `()`.
+pub extern "C" fn r#library_635_i16_inc_test(
+    r#value: i16,
     call_status: &mut uniffi::RustCallStatus,
 ) -> i16 {
     // If the provided function does not match the signature specified in the UDL
     // then this attempt to call it will not compile, and will give guidance as to why.
-    uniffi::deps::log::debug!("library_995e_i16_inc_test");
+    uniffi::deps::log::debug!("library_635_i16_inc_test");
 
     uniffi::call_with_output(call_status, || {
-        <i16 as uniffi::FfiConverter>::lower(i16_inc_test(
-            <i16 as uniffi::FfiConverter>::try_lift(value).unwrap(),
+        <i16 as uniffi::FfiConverter>::lower(r#i16_inc_test(
+            match <i16 as uniffi::FfiConverter>::try_lift(r#value) {
+                Ok(val) => val,
+                Err(err) => panic!("Failed to convert arg '{}': {}", "value", err),
+            },
         ))
     })
 }
 
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn library_995e_i32_inc_test(
-    value: i32,
+#[allow(clippy::let_unit_value)] // Sometimes we generate code that binds `_retval` to `()`.
+pub extern "C" fn r#library_635_i32_inc_test(
+    r#value: i32,
     call_status: &mut uniffi::RustCallStatus,
 ) -> i32 {
     // If the provided function does not match the signature specified in the UDL
     // then this attempt to call it will not compile, and will give guidance as to why.
-    uniffi::deps::log::debug!("library_995e_i32_inc_test");
+    uniffi::deps::log::debug!("library_635_i32_inc_test");
 
     uniffi::call_with_output(call_status, || {
-        <i32 as uniffi::FfiConverter>::lower(i32_inc_test(
-            <i32 as uniffi::FfiConverter>::try_lift(value).unwrap(),
+        <i32 as uniffi::FfiConverter>::lower(r#i32_inc_test(
+            match <i32 as uniffi::FfiConverter>::try_lift(r#value) {
+                Ok(val) => val,
+                Err(err) => panic!("Failed to convert arg '{}': {}", "value", err),
+            },
         ))
     })
 }
 
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn library_995e_i64_inc_test(
-    value: i64,
+#[allow(clippy::let_unit_value)] // Sometimes we generate code that binds `_retval` to `()`.
+pub extern "C" fn r#library_635_i64_inc_test(
+    r#value: i64,
     call_status: &mut uniffi::RustCallStatus,
 ) -> i64 {
     // If the provided function does not match the signature specified in the UDL
     // then this attempt to call it will not compile, and will give guidance as to why.
-    uniffi::deps::log::debug!("library_995e_i64_inc_test");
+    uniffi::deps::log::debug!("library_635_i64_inc_test");
 
     uniffi::call_with_output(call_status, || {
-        <i64 as uniffi::FfiConverter>::lower(i64_inc_test(
-            <i64 as uniffi::FfiConverter>::try_lift(value).unwrap(),
+        <i64 as uniffi::FfiConverter>::lower(r#i64_inc_test(
+            match <i64 as uniffi::FfiConverter>::try_lift(r#value) {
+                Ok(val) => val,
+                Err(err) => panic!("Failed to convert arg '{}': {}", "value", err),
+            },
         ))
     })
 }
 
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn library_995e_u8_inc_test(
-    value: u8,
+#[allow(clippy::let_unit_value)] // Sometimes we generate code that binds `_retval` to `()`.
+pub extern "C" fn r#library_635_u8_inc_test(
+    r#value: u8,
     call_status: &mut uniffi::RustCallStatus,
 ) -> u8 {
     // If the provided function does not match the signature specified in the UDL
     // then this attempt to call it will not compile, and will give guidance as to why.
-    uniffi::deps::log::debug!("library_995e_u8_inc_test");
+    uniffi::deps::log::debug!("library_635_u8_inc_test");
 
     uniffi::call_with_output(call_status, || {
-        <u8 as uniffi::FfiConverter>::lower(u8_inc_test(
-            <u8 as uniffi::FfiConverter>::try_lift(value).unwrap(),
+        <u8 as uniffi::FfiConverter>::lower(r#u8_inc_test(
+            match <u8 as uniffi::FfiConverter>::try_lift(r#value) {
+                Ok(val) => val,
+                Err(err) => panic!("Failed to convert arg '{}': {}", "value", err),
+            },
         ))
     })
 }
 
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn library_995e_u16_inc_test(
-    value: u16,
+#[allow(clippy::let_unit_value)] // Sometimes we generate code that binds `_retval` to `()`.
+pub extern "C" fn r#library_635_u16_inc_test(
+    r#value: u16,
     call_status: &mut uniffi::RustCallStatus,
 ) -> u16 {
     // If the provided function does not match the signature specified in the UDL
     // then this attempt to call it will not compile, and will give guidance as to why.
-    uniffi::deps::log::debug!("library_995e_u16_inc_test");
+    uniffi::deps::log::debug!("library_635_u16_inc_test");
 
     uniffi::call_with_output(call_status, || {
-        <u16 as uniffi::FfiConverter>::lower(u16_inc_test(
-            <u16 as uniffi::FfiConverter>::try_lift(value).unwrap(),
+        <u16 as uniffi::FfiConverter>::lower(r#u16_inc_test(
+            match <u16 as uniffi::FfiConverter>::try_lift(r#value) {
+                Ok(val) => val,
+                Err(err) => panic!("Failed to convert arg '{}': {}", "value", err),
+            },
         ))
     })
 }
 
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn library_995e_u32_inc_test(
-    value: u32,
+#[allow(clippy::let_unit_value)] // Sometimes we generate code that binds `_retval` to `()`.
+pub extern "C" fn r#library_635_u32_inc_test(
+    r#value: u32,
     call_status: &mut uniffi::RustCallStatus,
 ) -> u32 {
     // If the provided function does not match the signature specified in the UDL
     // then this attempt to call it will not compile, and will give guidance as to why.
-    uniffi::deps::log::debug!("library_995e_u32_inc_test");
+    uniffi::deps::log::debug!("library_635_u32_inc_test");
 
     uniffi::call_with_output(call_status, || {
-        <u32 as uniffi::FfiConverter>::lower(u32_inc_test(
-            <u32 as uniffi::FfiConverter>::try_lift(value).unwrap(),
+        <u32 as uniffi::FfiConverter>::lower(r#u32_inc_test(
+            match <u32 as uniffi::FfiConverter>::try_lift(r#value) {
+                Ok(val) => val,
+                Err(err) => panic!("Failed to convert arg '{}': {}", "value", err),
+            },
         ))
     })
 }
 
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn library_995e_u64_inc_test(
-    value: u64,
+#[allow(clippy::let_unit_value)] // Sometimes we generate code that binds `_retval` to `()`.
+pub extern "C" fn r#library_635_u64_inc_test(
+    r#value: u64,
     call_status: &mut uniffi::RustCallStatus,
 ) -> u64 {
     // If the provided function does not match the signature specified in the UDL
     // then this attempt to call it will not compile, and will give guidance as to why.
-    uniffi::deps::log::debug!("library_995e_u64_inc_test");
+    uniffi::deps::log::debug!("library_635_u64_inc_test");
 
     uniffi::call_with_output(call_status, || {
-        <u64 as uniffi::FfiConverter>::lower(u64_inc_test(
-            <u64 as uniffi::FfiConverter>::try_lift(value).unwrap(),
+        <u64 as uniffi::FfiConverter>::lower(r#u64_inc_test(
+            match <u64 as uniffi::FfiConverter>::try_lift(r#value) {
+                Ok(val) => val,
+                Err(err) => panic!("Failed to convert arg '{}': {}", "value", err),
+            },
         ))
     })
 }
 
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn library_995e_float_inc_test(
-    value: f32,
+#[allow(clippy::let_unit_value)] // Sometimes we generate code that binds `_retval` to `()`.
+pub extern "C" fn r#library_635_float_inc_test(
+    r#value: f32,
     call_status: &mut uniffi::RustCallStatus,
 ) -> f32 {
     // If the provided function does not match the signature specified in the UDL
     // then this attempt to call it will not compile, and will give guidance as to why.
-    uniffi::deps::log::debug!("library_995e_float_inc_test");
+    uniffi::deps::log::debug!("library_635_float_inc_test");
 
     uniffi::call_with_output(call_status, || {
-        <f32 as uniffi::FfiConverter>::lower(float_inc_test(
-            <f32 as uniffi::FfiConverter>::try_lift(value).unwrap(),
+        <f32 as uniffi::FfiConverter>::lower(r#float_inc_test(
+            match <f32 as uniffi::FfiConverter>::try_lift(r#value) {
+                Ok(val) => val,
+                Err(err) => panic!("Failed to convert arg '{}': {}", "value", err),
+            },
         ))
     })
 }
 
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn library_995e_double_inc_test(
-    value: f64,
+#[allow(clippy::let_unit_value)] // Sometimes we generate code that binds `_retval` to `()`.
+pub extern "C" fn r#library_635_double_inc_test(
+    r#value: f64,
     call_status: &mut uniffi::RustCallStatus,
 ) -> f64 {
     // If the provided function does not match the signature specified in the UDL
     // then this attempt to call it will not compile, and will give guidance as to why.
-    uniffi::deps::log::debug!("library_995e_double_inc_test");
+    uniffi::deps::log::debug!("library_635_double_inc_test");
 
     uniffi::call_with_output(call_status, || {
-        <f64 as uniffi::FfiConverter>::lower(double_inc_test(
-            <f64 as uniffi::FfiConverter>::try_lift(value).unwrap(),
+        <f64 as uniffi::FfiConverter>::lower(r#double_inc_test(
+            match <f64 as uniffi::FfiConverter>::try_lift(r#value) {
+                Ok(val) => val,
+                Err(err) => panic!("Failed to convert arg '{}': {}", "value", err),
+            },
         ))
     })
 }
 
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn library_995e_string_inc_test(
-    value: uniffi::RustBuffer,
+#[allow(clippy::let_unit_value)] // Sometimes we generate code that binds `_retval` to `()`.
+pub extern "C" fn r#library_635_string_inc_test(
+    r#value: uniffi::RustBuffer,
     call_status: &mut uniffi::RustCallStatus,
 ) -> uniffi::RustBuffer {
     // If the provided function does not match the signature specified in the UDL
     // then this attempt to call it will not compile, and will give guidance as to why.
-    uniffi::deps::log::debug!("library_995e_string_inc_test");
+    uniffi::deps::log::debug!("library_635_string_inc_test");
 
     uniffi::call_with_output(call_status, || {
-        <String as uniffi::FfiConverter>::lower(string_inc_test(
-            <String as uniffi::FfiConverter>::try_lift(value).unwrap(),
+        <String as uniffi::FfiConverter>::lower(r#string_inc_test(
+            match <String as uniffi::FfiConverter>::try_lift(r#value) {
+                Ok(val) => val,
+                Err(err) => panic!("Failed to convert arg '{}': {}", "value", err),
+            },
         ))
     })
 }
 
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn library_995e_byref_inc_test(
-    value: uniffi::RustBuffer,
+#[allow(clippy::let_unit_value)] // Sometimes we generate code that binds `_retval` to `()`.
+pub extern "C" fn r#library_635_byref_inc_test(
+    r#value: uniffi::RustBuffer,
     call_status: &mut uniffi::RustCallStatus,
 ) -> uniffi::RustBuffer {
     // If the provided function does not match the signature specified in the UDL
     // then this attempt to call it will not compile, and will give guidance as to why.
-    uniffi::deps::log::debug!("library_995e_byref_inc_test");
+    uniffi::deps::log::debug!("library_635_byref_inc_test");
 
     uniffi::call_with_output(call_status, || {
-        <FfiConverterTypePoint as uniffi::FfiConverter>::lower(byref_inc_test(
-            &<FfiConverterTypePoint as uniffi::FfiConverter>::try_lift(value).unwrap(),
+        <FfiConverterTypePoint as uniffi::FfiConverter>::lower(r#byref_inc_test(
+            match <FfiConverterTypePoint as uniffi::FfiConverter>::try_lift(r#value) {
+                Ok(ref val) => val,
+                Err(err) => panic!("Failed to convert arg '{}': {}", "value", err),
+            },
         ))
     })
 }
 
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn library_995e_optional_type_inc_test(
-    value: uniffi::RustBuffer,
+#[allow(clippy::let_unit_value)] // Sometimes we generate code that binds `_retval` to `()`.
+pub extern "C" fn r#library_635_optional_type_inc_test(
+    r#value: uniffi::RustBuffer,
     call_status: &mut uniffi::RustCallStatus,
 ) -> uniffi::RustBuffer {
     // If the provided function does not match the signature specified in the UDL
     // then this attempt to call it will not compile, and will give guidance as to why.
-    uniffi::deps::log::debug!("library_995e_optional_type_inc_test");
+    uniffi::deps::log::debug!("library_635_optional_type_inc_test");
 
     uniffi::call_with_output(call_status, || {
-        <std::option::Option<i32> as uniffi::FfiConverter>::lower(optional_type_inc_test(
-            <std::option::Option<i32> as uniffi::FfiConverter>::try_lift(value).unwrap(),
+        <std::option::Option<i32> as uniffi::FfiConverter>::lower(r#optional_type_inc_test(
+            match <std::option::Option<i32> as uniffi::FfiConverter>::try_lift(r#value) {
+                Ok(val) => val,
+                Err(err) => panic!("Failed to convert arg '{}': {}", "value", err),
+            },
         ))
     })
 }
 
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn library_995e_vector_inc_test(
-    value: uniffi::RustBuffer,
+#[allow(clippy::let_unit_value)] // Sometimes we generate code that binds `_retval` to `()`.
+pub extern "C" fn r#library_635_vector_inc_test(
+    r#value: uniffi::RustBuffer,
     call_status: &mut uniffi::RustCallStatus,
 ) -> uniffi::RustBuffer {
     // If the provided function does not match the signature specified in the UDL
     // then this attempt to call it will not compile, and will give guidance as to why.
-    uniffi::deps::log::debug!("library_995e_vector_inc_test");
+    uniffi::deps::log::debug!("library_635_vector_inc_test");
 
     uniffi::call_with_output(call_status, || {
-        <std::vec::Vec<String> as uniffi::FfiConverter>::lower(vector_inc_test(
-            <std::vec::Vec<String> as uniffi::FfiConverter>::try_lift(value).unwrap(),
+        <std::vec::Vec<String> as uniffi::FfiConverter>::lower(r#vector_inc_test(
+            match <std::vec::Vec<String> as uniffi::FfiConverter>::try_lift(r#value) {
+                Ok(val) => val,
+                Err(err) => panic!("Failed to convert arg '{}': {}", "value", err),
+            },
         ))
     })
 }
 
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn library_995e_hash_map_inc_test(
-    value: uniffi::RustBuffer,
+#[allow(clippy::let_unit_value)] // Sometimes we generate code that binds `_retval` to `()`.
+pub extern "C" fn r#library_635_hash_map_inc_test(
+    r#value: uniffi::RustBuffer,
     call_status: &mut uniffi::RustCallStatus,
 ) -> uniffi::RustBuffer {
     // If the provided function does not match the signature specified in the UDL
     // then this attempt to call it will not compile, and will give guidance as to why.
-    uniffi::deps::log::debug!("library_995e_hash_map_inc_test");
+    uniffi::deps::log::debug!("library_635_hash_map_inc_test");
 
     uniffi::call_with_output(call_status, || {
-        <std::collections::HashMap<String, i32> as uniffi::FfiConverter>::lower(hash_map_inc_test(
-            <std::collections::HashMap<String, i32> as uniffi::FfiConverter>::try_lift(value)
-                .unwrap(),
-        ))
+        <std::collections::HashMap<String, i32> as uniffi::FfiConverter>::lower(
+            r#hash_map_inc_test(
+                match <std::collections::HashMap<String, i32> as uniffi::FfiConverter>::try_lift(
+                    r#value,
+                ) {
+                    Ok(val) => val,
+                    Err(err) => panic!("Failed to convert arg '{}': {}", "value", err),
+                },
+            ),
+        )
     })
 }
 
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn library_995e_void_inc_test(value: i32, call_status: &mut uniffi::RustCallStatus) {
+#[allow(clippy::let_unit_value)] // Sometimes we generate code that binds `_retval` to `()`.
+pub extern "C" fn r#library_635_void_inc_test(
+    r#value: i32,
+    call_status: &mut uniffi::RustCallStatus,
+) {
     // If the provided function does not match the signature specified in the UDL
     // then this attempt to call it will not compile, and will give guidance as to why.
-    uniffi::deps::log::debug!("library_995e_void_inc_test");
+    uniffi::deps::log::debug!("library_635_void_inc_test");
 
     uniffi::call_with_output(call_status, || {
-        void_inc_test(<i32 as uniffi::FfiConverter>::try_lift(value).unwrap())
+        r#void_inc_test(match <i32 as uniffi::FfiConverter>::try_lift(r#value) {
+            Ok(val) => val,
+            Err(err) => panic!("Failed to convert arg '{}': {}", "value", err),
+        })
     })
 }
 
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn library_995e_error_inc_test(
-    a: u64,
-    b: u64,
+#[allow(clippy::let_unit_value)] // Sometimes we generate code that binds `_retval` to `()`.
+pub extern "C" fn r#library_635_error_inc_test(
+    r#a: u64,
+    r#b: u64,
     call_status: &mut uniffi::RustCallStatus,
 ) -> u64 {
     // If the provided function does not match the signature specified in the UDL
     // then this attempt to call it will not compile, and will give guidance as to why.
-    uniffi::deps::log::debug!("library_995e_error_inc_test");
+    uniffi::deps::log::debug!("library_635_error_inc_test");
 
     uniffi::call_with_result(call_status, || {
-        let _retval = error_inc_test(
-            <u64 as uniffi::FfiConverter>::try_lift(a).unwrap(),
-            <u64 as uniffi::FfiConverter>::try_lift(b).unwrap(),
+        let _retval = r#error_inc_test(
+            match <u64 as uniffi::FfiConverter>::try_lift(r#a) {
+                Ok(val) => val,
+                Err(err) => {
+                    return Err(uniffi::lower_anyhow_error_or_panic::<
+                        FfiConverterTypeArithmeticError,
+                    >(err, "a"))
+                }
+            },
+            match <u64 as uniffi::FfiConverter>::try_lift(r#b) {
+                Ok(val) => val,
+                Err(err) => {
+                    return Err(uniffi::lower_anyhow_error_or_panic::<
+                        FfiConverterTypeArithmeticError,
+                    >(err, "b"))
+                }
+            },
         )
         .map_err(Into::into)
         .map_err(<FfiConverterTypeArithmeticError as uniffi::FfiConverter>::lower)?;
@@ -464,4 +511,33 @@ pub extern "C" fn library_995e_error_inc_test(
 
 // Types with an external `FfiConverter`...
 
-// More complicated locally `Wrapped` types - we generate FfiConverter.
+// For custom scaffolding types we need to generate an FfiConverterType based on the
+// UniffiCustomTypeConverter implementation that the library supplies
+
+// The `reexport_uniffi_scaffolding` macro
+// Code to re-export the UniFFI scaffolding functions.
+//
+// Rust won't always re-export the functions from dependencies
+// ([rust-lang#50007](https://github.com/rust-lang/rust/issues/50007))
+//
+// A workaround for this is to have the dependent crate reference a function from its dependency in
+// an extern "C" function. This is clearly hacky and brittle, but at least we have some unittests
+// that check if this works (fixtures/reexport-scaffolding-macro).
+//
+// The main way we use this macro is for that contain multiple UniFFI components (libxul,
+// megazord).  The combined library has a cargo dependency for each component and calls
+// uniffi_reexport_scaffolding!() for each one.
+
+#[doc(hidden)]
+pub fn uniffi_reexport_hack() {}
+
+#[macro_export]
+macro_rules! uniffi_reexport_scaffolding {
+    () => {
+        #[doc(hidden)]
+        #[no_mangle]
+        pub extern "C" fn library_uniffi_reexport_hack() {
+            $crate::uniffi_reexport_hack()
+        }
+    };
+}
