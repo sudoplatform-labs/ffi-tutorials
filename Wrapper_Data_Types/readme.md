@@ -2,7 +2,7 @@
 
 
 ## Background
-In the previous tutorial ([Creating Language Wrappers for Rust Libraries - Part 1](https://github.com/sudoplatform-labs/ffi-tutorials/tree/main/Wrapper_Intro)), methods were presented for creating platform-independent and programming language-independent libraries using the [Rust](https://www.rust-lang.org) programming language.  Part 1 also demonstrated how to use the [Mozilla](https://www.mozilla.org/) [uniffi](https://github.com/mozilla/uniffi-rs) tool to *automatically* generate language wrappers for Swift and Python. Test applications (for Swift and Python) were created and used to demonstrate how to import the Rust library using the generated language wrappers.  (Note:  some of the example material was adapted from various uniffi examples.)
+In the previous tutorial ([Creating Language Wrappers for Rust Libraries - Part 1](https://github.com/sudoplatform-labs/ffi-tutorials/tree/main/Wrapper_Intro)), methods were presented for creating platform-independent and programming language-independent libraries using the [Rust](https://www.rust-lang.org) programming language.  Part 1 also demonstrated how to install and use the [Mozilla uniffi](https://github.com/mozilla/uniffi-rs) tool to *automatically* generate language wrappers for Swift and Python. Test applications (for Swift and Python) were created and used to demonstrate how to import the Rust library using the generated language wrappers.  (Note:  some of the example material was adapted from various uniffi examples.)
 
 
 ## Tutorial
@@ -58,30 +58,84 @@ build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-uniffi = "0.22"
+uniffi = { version = "0.23.0" }
+uniffi_bindgen = "0.23.0"
 # includes the 'thiserror' crate.
 thiserror = "1.0"
 
-[lib]
-name = "library"
-crate-type = ["cdylib"]
-
 [build-dependencies]
-uniffi_build = "0.22"
+uniffi = { version = "0.23.0", features = [ "build", "cli"] }
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "uniffi-bindgen.rs"
+
+[lib]
+crate-type = ["cdylib"]
+name = "library"
 ```
 
-These additions tell cargo to load uniffi version 0.22 and to create a cdylib named library.  
+The ```[dependencies]``` section instructs cargo to load and use uniffi version 0.23.0.  (uniffi-bindgen is now built while building the app and is described below.). ```[build-dependencies]``` section instructs cargo to use uniffi version 0.23.0 and references the *build* and *cli* features.  *cli* is specified to allow building the uniffi-bindgen tool.  The ```[bin``` section shows that a binary target called *uniffi-bindgen* will be created from a file called uniffi-bindgen.rs (located next to the Cargo.toml file).  The ```[lib]``` section allows developers to specify that the target is a cdylib and *name* is user defined.  For this tutorial, I have named it *library*, so it's clear what is being created. 
 
-### Include the uniffi Rust Binding Code
+## Create The uniffi-bindgen ExecutableA previously described, the Cargo.toml file contains a reference to the uniffi-bindgen binary, which looks like this:
+
+```
+[[bin]]
+name = "uniffi-bindgen"
+path = "uniffi-bindgen.rs"
+```
+
+To generate the binary, create a new file called *uniffi-bindgen.rs* next to Cargo.toml and add:
+
+```
+fn main() {
+
+    uniffi::uniffi_bindgen_main()
+}
+```
+
+This instructs Cargo to launch the newly built uniffi-bindgen and tell it to call the uniffi-bindgen code contained within the uniffi crate.  The purpose of these steps is to give Cargo something to build / call that is wholly dependent on the specific versions contained within the particular uniffi crate.  This makes things simpler when new versions are installed, as well as, simplifying the build process.
+
+
+To build the uniffi-bindgen binary, please execute the following:
+
+```
+cargo run --features=uniffi/cli --bin uniffi-bindgen
+```
+
+Once the build process completes, it should display something like this:
+
+```
+Finished dev [unoptimized + debuginfo] target(s) in 1m 01s
+     Running `target/debug/uniffi-bindgen`
+uniffi-bindgen 0.23.0
+Scaffolding and bindings generator for Rust
+
+USAGE:
+    uniffi-bindgen <SUBCOMMAND>
+
+OPTIONS:
+    -h, --help       Print help information
+    -V, --version    Print version information
+
+SUBCOMMANDS:
+    generate       Generate foreign language bindings
+    help           Print this message or the help of the given subcommand(s)
+    print-json     Print the JSON representation of the interface from a dynamic library
+    scaffolding    Generate Rust scaffolding code
+```
+
+
+## Include the uniffi Rust Binding Code
 Now, go into the src sub-directory, edit lib.rs, and add the following line to the **top** of the file:
 
 ```
-include!("library.uniffi.uniffi.rs"); 
+uniffi::include_scaffolding!("library");
 ```
 
-The include statement instructs the Rust compiler to load the Rust binding file.  *Please note that this file will not have been created by this point, but it will be once the scaffolding and binding layers are generated (see below).*  
+The uniffi include macro instructs the Rust compiler to load the scaffolding code, which will be generated during the build process.  The Rust functions being exported are listed below and will comprise the API for this library.    *Please note that this file will not have been created by this point, but it will be once the scaffolding and binding layers are generated (see below).*  
 
-### Create Routines To Test Each Supported Type
+## Build Methods to Test Each Supported Type
 In order to test the capabilities of the language wrappers, several public test functions will be created and added to the lib.rs file.  Each of the following test routines will provide a very simple function that will receive a specific data type as an input parameter and then return a corresponding data type as a result.  This series of test routines will use each of the Rust data types that is currently supported by uniffi.  *(Please note:  for simplicity, no error checking is performed unless it is a necessary part of the demonstration.)*
 
 ### Add A Boolean Test Routine
@@ -285,7 +339,7 @@ pub fn error_inc_test(a: u64, b: u64) -> Result<u64, ArithmeticError> {
 ## Create the UDL File
 Just like in Part 1, once the Rust library is created and its API defined, it's time to create the UDL file.  The UDL file is also created in the library/src directory.  This file will define each the public functions, type structures, and custom errors created above.  The reason for creating a custom UDL representation of these items is that it makes it easier for uniffi to generate the scaffolding and language wrapper layers.  A byproduct of this process is that it also helps the programmer(s) to see each of the library's public members.
 
-To create the UDL, start by creating a file called *library.uniffi.udl*.  The uniffi naming convention is such that the name *'library'* is the same name chosen as the name of the project's library and '.uniffi.udl' denotes that it is a uniffi UDL file.  In UDL, all of the API functions must be specified in the UDL file under the *namespace* block while the types and error definitions are declared outside of the namespace block. UDL reads like a pseudocode representation of the public interface.  The types used in this file adhere to the [UDL specification](https://mozilla.github.io/uniffi-rs/udl_file_spec.html).  UDL can be used to specify many other types, enumerations, structs, dictionaries, interfaces, objects, and errors, however, those are not covered in this tutorial. Please dd the following lines to the new UDL file:
+To create the UDL, start by creating a file called *library.udl*.  The uniffi naming convention is such that the name *'library'* is the same name chosen as the name of the project's library and '.udl' denotes that it is a uniffi UDL file.  In UDL, all of the API functions must be specified in the UDL file under the *namespace* block while the types and error definitions are declared outside of the namespace block. UDL reads like a pseudocode representation of the public interface.  The types used in this file adhere to the [UDL specification](https://mozilla.github.io/uniffi-rs/udl_file_spec.html).  UDL can be used to specify many other types, enumerations, structs, dictionaries, interfaces, objects, and errors, however, those are not covered in this tutorial. Please add the following lines to the new UDL file:
 
 ```
 [Error]
@@ -333,40 +387,22 @@ namespace library {
 };
 ```
 
+In UDL, all of the API functions must be specified in the UDL file under the *namespace* block.  The UDL reads like a type of pseudocode that easily describes the function definition.  The types used in this file adhere to the [UDL specification](https://mozilla.github.io/uniffi-rs/udl_file_spec.html).
+
+
 ## Generate The Scaffolding Layer
 
-The scaffolding layer is set of code that exposes the library's API and serializes the specified data types as an enhanced FFI layer.  Generating the scaffolding layer is a simple process that is done at the command line by typing:
-
-`
-uniffi-bindgen scaffolding ./src/library.uniffi.udl
-`
-
-Executing this command will create a file called *./src/library.uniffi.uniffi.rs*. It is important to *not* modify this file.  However, viewing it in a code editor will show that ~544 lines of rust code have been created. This code implements the FFI layer and contains numerous comments describing its operation.  The FFI routine corresponding to the boolean test's API function, bool\_inc\_test( ), created above is found at line ~110 and reads as follows:
+The *scaffolding layer* is set of code that exposes the library's API and serializes the specified data types as an enhanced FFI layer.  In previous uniffi versions, the scaffolding layer used to be generated from the command terminal.  Starting in version 0.23.0, this is accomplished in the *build.rs* file, which cargo uses to perform build steps.  To do this, create build.rs next to Cargo.toml and add the following:
 
 ```
-110  #[doc(hidden)]
-111  #[no_mangle]
-112  #[allow(clippy::let_unit_value)] // Sometimes we generate code that binds `_retval` to `()`.
-113  pub extern "C" fn r#library_635_bool_inc_test(
-114      r#value: i8,
-115      call_status: &mut uniffi::RustCallStatus,
-116  ) -> i8 {
-117      // If the provided function does not match the signature specified in the UDL
-118      // then this attempt to call it will not compile, and will give guidance as to why.
-119      uniffi::deps::log::debug!("library_635_bool_inc_test");
-120  
-121      uniffi::call_with_output(call_status, || {
-122          <bool as uniffi::FfiConverter>::lower(r#bool_inc_test(
-123              match <bool as uniffi::FfiConverter>::try_lift(r#value) {
-124                  Ok(val) => val,
-125                  Err(err) => panic!("Failed to convert arg '{}': {}", "value", err),
-126              },
-127          ))
-128      })
-129  }
+fn main() {
+
+	uniffi::generate_scaffolding("./src/library.udl").unwrap();
+}
 ```
 
-While this code contains a valid FFI function and can be called, it is also in a format that might appear a little strange to application programmers who are not also C-programmers.  For that reason a language-specific wrapper function can simplify calls into the library.
+This call will generate the scaffolding layer code from the library.udl file created above and will make it available for import into lib.rs at build time. 
+
 
 ## Build the Rust Library
 
@@ -378,89 +414,61 @@ This will build the rust library according to the settings in Cargo.toml.  If ev
 
 ```
 % cargo build
-   Compiling ...
-   ...
+   Compiling library v0.1.0 (./ffi-tutorials/Wrapper_Data_Types/library)
     Finished dev [unoptimized + debuginfo] target(s) in 21.47s
 ```
 
 ## Genrating a Swift Language Wrapper
 
-With the library created and the scaffolding layer generated, it is time to create the Swift-language bindings.  This also consists of a single line of code:
+At this point, the newly created *uniffi-bindgen* can be called with:
+
+ ```cargo run --features=uniffi/cli --bin uniffi-bindgen [args]```
+
+where *args* refers to the language wrapper being created.  So, for Swift, the call would look like 
+
+```cargo run --bin uniffi-bindgen generate src/library.udl --language swift```
+
+Executing this command will create *libraryFFI.h*, *libraryFFI.modulemap*, and (for Swift) *library.swift*.  *library.swift* is a file of ~846 lines of code that contains the Swift wrapper code.  As an example, the function ```boolIncTest( )``` will appear as follows:
 
 ```
-uniffi-bindgen generate ./src/library.uniffi.udl --language swift
+621  public func boolIncTest(value: Bool) -> Bool {
+622      return try! FfiConverterBool.lift(
+623          try!
+624  
+625              rustCall {
+626                  library_635_bool_inc_test(
+627                      FfiConverterBool.lower(value), $0
+628                  )
+629              }
+630      )
+631  }
 ```
 
-This command should complete without error.  However, it does rely on a tool called *SwiftFormat*, which, if not installed, will yield a warning similar to the following:
+This code calls the FFI code (generated by uniffi) that performs the actual functions of calling into the library, sending / retrieving parameters, etc.  For fun, feel free to browse through the rest of the *library.swift* (or other language) file to see the FFI complexity that is saved by uniffi.  While it is definately possible to craft the FFI code by hand, it is a steep climb for application programmers who are not also C-programmers.  For that reason, a language-specific wrapper function definately simplifies calls into the library.
+
+Please note that the Swift function has been formatted in the style of other Swift source code -- even the name has been converted from *snake case* (used in Rust) to *camel case* (used in Swift).  Additionally, this Swift function invokes (on line 626) the function, library\_635\_bool\_inc\_test( ), that was generated during the scaffolding creation step during the build process as described above. 
+
+## Generating a Python Language Wrapper
+
+To generate the Python language wrapper, run 
+
+```cargo run --bin uniffi-bindgen generate src/library.udl --language python```
+
+Executing this command will create *library.py*, which is a file of ~900 lines of code that contains the Python wrapper code.  As an example, the function ```bool_inc_test( )``` will appear as follows:
+
 
 ```
-Warning: Unable to auto-format library.swift using swiftformat: Os { code: 2, kind: NotFound,
-message: "No such file or directory" }
+731  def bool_inc_test(value):
+432      value = bool(value)
+433    
+434      return FfiConverterBool.lift(rust_call(_UniFFILib.library_eb66_bool_inc_test,
+435          FfiConverterBool.lower(value)))
 ```
 
-If this warning appears, it may simply be ignored and will result in no ill effects during execution of the applications importing this library.  However, to reformat the Swift code (and make this warning disappear), it is necessary to install the SwiftFormat tool, which can be installed using *brew* as follows:
-
-```
-brew install swiftformat
+This code calls other FFI code (generated by uniffi) that performs the actual functions of calling into the library, sending / retrieving parameters, etc.  For fun, feel free to browse through the rest of the *library.py* file to see the FFI complexity that is saved by uniffi.
 ```
 
-Once SwiftFormat is installed, run the uniffi-bindgen command again and the generated Swift-language code will be regenerated and formatted without a warning message.
-
-This process generates a file called *library.swift* that has ~838 lines of code.  The Swift representation of the bool\_inc\_test( ) function and appears on line ~613 as follows:
-
-```
-613  public func boolIncTest(value: Bool) -> Bool {
-614      return try! FfiConverterBool.lift(
-615          try!
-616  
-617              rustCall {
-618                  library_635_bool_inc_test(
-619                      FfiConverterBool.lower(value), $0
-620                  )
-621              }
-622      )
-623  }
-```
-
-Please note that the Swift function has been formatted in the style of other Swift source code -- even the name has been converted from *snake case* (used in Rust) to *camel case* (used in Swift).  Additionally, this Swift function invokes (on line 618) the function, library\_635\_bool\_inc\_test( ), that was generated in *./src/library.uniffi.uniffi.rs* above.  
-
-Although, this language wrapper generation step isn't strictly necessary from an FFI perspective, it is of notable value to the Swift programmers who will import the library.  This step allows them to interface with the library that looks and feels like Swift rather than having to learn how to C programming interfaces and manage C data types.
-
-## Genrating a Python Language Wrapper
-
-With the library created and the scaffolding layer generated, it is time to create the Python-language bindings.  (The steps to creating the Python wrapper are very similar to those used to generate the Swift code above.) This also consists of a single line of code:
-
-```
-uniffi-bindgen generate ./src/library.uniffi.udl --language python
-```
-
-This command should complete without error.  However, it does rely on a tool called *yapf*, which, if not installed, will yield a warning similar to the following:
-
-```
-Warning: Unable to auto-format library.py using yapf: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-```
-
-If this warning appears, it may simply be ignored and will result in no ill effects during execution of the applications importing this library.  However, to reformat the Python code (and make this warning disappear), it is necessary to install the tool, which can be installed using *brew* as follows:
-
-```
-brew install yapf
-```
-
-Once yapf is installed, run the uniffi-bindgen command again and the generated Python-language code will be regenerated and formatted without a warning message.
-
-This process generates a file called *library.py* that has ~901 lines of code.  Theis file contains the Python representation of the bool\_inc\_test( ) function on line ~609 and appears as follows:
-
-```
-609 def bool_inc_test(value):
-610     value = bool(value)
-611     _retval = rust_call_with_error(InternalError,_UniFFILib.library_c453_bool_inc_test,(1 if value else 0))
-612     return (True if _retval else False)
-```
-
-Please note that the Python function has been formatted in the style of other Python source code.  Additionally, this Python function invokes (on line 611) the function, \_UniFFILib.library\_c453\_bool\_inc\_test, that was generated in *./src/library.uniffi.uniffi.rs* above.  
-
-Although, this language wrapper generation step isn't strictly necessary from an FFI perspective, it is of notable value to the Python programmers who will import the library.  This step allows them to interface with a code interface to the library the looks and feels like Python rather than having to learn how to call C programming interfaces and manage C data types.
-
+Please note that the Python function has been formatted in the style of other Python source code.  Additionally, this Python function invokes (on line 611) the function, \_UniFFILib.library\_eb66\_bool\_inc\_test, that was generated in during the scaffolding creation step of the build process as desribed above.  
 
 ## Swift Application: Calling the Rust Library
 
