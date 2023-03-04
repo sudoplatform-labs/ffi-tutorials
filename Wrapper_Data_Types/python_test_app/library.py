@@ -38,14 +38,14 @@ class RustBuffer(ctypes.Structure):
 
     @staticmethod
     def alloc(size):
-        return rust_call(_UniFFILib.ffi_library_635_rustbuffer_alloc, size)
+        return rust_call(_UniFFILib.ffi_library_cbd2_rustbuffer_alloc, size)
 
     @staticmethod
     def reserve(rbuf, additional):
-        return rust_call(_UniFFILib.ffi_library_635_rustbuffer_reserve, rbuf, additional)
+        return rust_call(_UniFFILib.ffi_library_cbd2_rustbuffer_reserve, rbuf, additional)
 
     def free(self):
-        return rust_call(_UniFFILib.ffi_library_635_rustbuffer_free, self)
+        return rust_call(_UniFFILib.ffi_library_cbd2_rustbuffer_free, self)
 
     def __str__(self):
         return "RustBuffer(capacity={}, len={}, data={})".format(
@@ -344,118 +344,118 @@ def loadIndirect():
 # This is an implementation detail which will be called internally by the public API.
 
 _UniFFILib = loadIndirect()
-_UniFFILib.library_635_bool_inc_test.argtypes = (
+_UniFFILib.library_cbd2_bool_inc_test.argtypes = (
     ctypes.c_int8,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.library_635_bool_inc_test.restype = ctypes.c_int8
-_UniFFILib.library_635_i8_inc_test.argtypes = (
+_UniFFILib.library_cbd2_bool_inc_test.restype = ctypes.c_int8
+_UniFFILib.library_cbd2_i8_inc_test.argtypes = (
     ctypes.c_int8,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.library_635_i8_inc_test.restype = ctypes.c_int8
-_UniFFILib.library_635_i16_inc_test.argtypes = (
+_UniFFILib.library_cbd2_i8_inc_test.restype = ctypes.c_int8
+_UniFFILib.library_cbd2_i16_inc_test.argtypes = (
     ctypes.c_int16,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.library_635_i16_inc_test.restype = ctypes.c_int16
-_UniFFILib.library_635_i32_inc_test.argtypes = (
+_UniFFILib.library_cbd2_i16_inc_test.restype = ctypes.c_int16
+_UniFFILib.library_cbd2_i32_inc_test.argtypes = (
     ctypes.c_int32,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.library_635_i32_inc_test.restype = ctypes.c_int32
-_UniFFILib.library_635_i64_inc_test.argtypes = (
+_UniFFILib.library_cbd2_i32_inc_test.restype = ctypes.c_int32
+_UniFFILib.library_cbd2_i64_inc_test.argtypes = (
     ctypes.c_int64,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.library_635_i64_inc_test.restype = ctypes.c_int64
-_UniFFILib.library_635_u8_inc_test.argtypes = (
+_UniFFILib.library_cbd2_i64_inc_test.restype = ctypes.c_int64
+_UniFFILib.library_cbd2_u8_inc_test.argtypes = (
     ctypes.c_uint8,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.library_635_u8_inc_test.restype = ctypes.c_uint8
-_UniFFILib.library_635_u16_inc_test.argtypes = (
+_UniFFILib.library_cbd2_u8_inc_test.restype = ctypes.c_uint8
+_UniFFILib.library_cbd2_u16_inc_test.argtypes = (
     ctypes.c_uint16,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.library_635_u16_inc_test.restype = ctypes.c_uint16
-_UniFFILib.library_635_u32_inc_test.argtypes = (
+_UniFFILib.library_cbd2_u16_inc_test.restype = ctypes.c_uint16
+_UniFFILib.library_cbd2_u32_inc_test.argtypes = (
     ctypes.c_uint32,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.library_635_u32_inc_test.restype = ctypes.c_uint32
-_UniFFILib.library_635_u64_inc_test.argtypes = (
+_UniFFILib.library_cbd2_u32_inc_test.restype = ctypes.c_uint32
+_UniFFILib.library_cbd2_u64_inc_test.argtypes = (
     ctypes.c_uint64,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.library_635_u64_inc_test.restype = ctypes.c_uint64
-_UniFFILib.library_635_float_inc_test.argtypes = (
+_UniFFILib.library_cbd2_u64_inc_test.restype = ctypes.c_uint64
+_UniFFILib.library_cbd2_float_inc_test.argtypes = (
     ctypes.c_float,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.library_635_float_inc_test.restype = ctypes.c_float
-_UniFFILib.library_635_double_inc_test.argtypes = (
+_UniFFILib.library_cbd2_float_inc_test.restype = ctypes.c_float
+_UniFFILib.library_cbd2_double_inc_test.argtypes = (
     ctypes.c_double,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.library_635_double_inc_test.restype = ctypes.c_double
-_UniFFILib.library_635_string_inc_test.argtypes = (
+_UniFFILib.library_cbd2_double_inc_test.restype = ctypes.c_double
+_UniFFILib.library_cbd2_string_inc_test.argtypes = (
     RustBuffer,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.library_635_string_inc_test.restype = RustBuffer
-_UniFFILib.library_635_byref_inc_test.argtypes = (
+_UniFFILib.library_cbd2_string_inc_test.restype = RustBuffer
+_UniFFILib.library_cbd2_byref_inc_test.argtypes = (
     RustBuffer,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.library_635_byref_inc_test.restype = RustBuffer
-_UniFFILib.library_635_optional_type_inc_test.argtypes = (
+_UniFFILib.library_cbd2_byref_inc_test.restype = RustBuffer
+_UniFFILib.library_cbd2_optional_type_inc_test.argtypes = (
     RustBuffer,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.library_635_optional_type_inc_test.restype = RustBuffer
-_UniFFILib.library_635_vector_inc_test.argtypes = (
+_UniFFILib.library_cbd2_optional_type_inc_test.restype = RustBuffer
+_UniFFILib.library_cbd2_vector_inc_test.argtypes = (
     RustBuffer,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.library_635_vector_inc_test.restype = RustBuffer
-_UniFFILib.library_635_hash_map_inc_test.argtypes = (
+_UniFFILib.library_cbd2_vector_inc_test.restype = RustBuffer
+_UniFFILib.library_cbd2_hash_map_inc_test.argtypes = (
     RustBuffer,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.library_635_hash_map_inc_test.restype = RustBuffer
-_UniFFILib.library_635_void_inc_test.argtypes = (
+_UniFFILib.library_cbd2_hash_map_inc_test.restype = RustBuffer
+_UniFFILib.library_cbd2_void_inc_test.argtypes = (
     ctypes.c_int32,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.library_635_void_inc_test.restype = None
-_UniFFILib.library_635_error_inc_test.argtypes = (
+_UniFFILib.library_cbd2_void_inc_test.restype = None
+_UniFFILib.library_cbd2_error_inc_test.argtypes = (
     ctypes.c_uint64,
     ctypes.c_uint64,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.library_635_error_inc_test.restype = ctypes.c_uint64
-_UniFFILib.ffi_library_635_rustbuffer_alloc.argtypes = (
+_UniFFILib.library_cbd2_error_inc_test.restype = ctypes.c_uint64
+_UniFFILib.ffi_library_cbd2_rustbuffer_alloc.argtypes = (
     ctypes.c_int32,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.ffi_library_635_rustbuffer_alloc.restype = RustBuffer
-_UniFFILib.ffi_library_635_rustbuffer_from_bytes.argtypes = (
+_UniFFILib.ffi_library_cbd2_rustbuffer_alloc.restype = RustBuffer
+_UniFFILib.ffi_library_cbd2_rustbuffer_from_bytes.argtypes = (
     ForeignBytes,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.ffi_library_635_rustbuffer_from_bytes.restype = RustBuffer
-_UniFFILib.ffi_library_635_rustbuffer_free.argtypes = (
+_UniFFILib.ffi_library_cbd2_rustbuffer_from_bytes.restype = RustBuffer
+_UniFFILib.ffi_library_cbd2_rustbuffer_free.argtypes = (
     RustBuffer,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.ffi_library_635_rustbuffer_free.restype = None
-_UniFFILib.ffi_library_635_rustbuffer_reserve.argtypes = (
+_UniFFILib.ffi_library_cbd2_rustbuffer_free.restype = None
+_UniFFILib.ffi_library_cbd2_rustbuffer_reserve.argtypes = (
     RustBuffer,
     ctypes.c_int32,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.ffi_library_635_rustbuffer_reserve.restype = RustBuffer
+_UniFFILib.ffi_library_cbd2_rustbuffer_reserve.restype = RustBuffer
 
 # Public interface members begin here.
 
@@ -731,7 +731,7 @@ class FfiConverterMapStringInt32(FfiConverterRustBuffer):
 def bool_inc_test(value):
     value = bool(value)
     
-    return FfiConverterBool.lift(rust_call(_UniFFILib.library_635_bool_inc_test,
+    return FfiConverterBool.lift(rust_call(_UniFFILib.library_cbd2_bool_inc_test,
         FfiConverterBool.lower(value)))
 
 
@@ -739,7 +739,7 @@ def bool_inc_test(value):
 def i8_inc_test(value):
     value = int(value)
     
-    return FfiConverterInt8.lift(rust_call(_UniFFILib.library_635_i8_inc_test,
+    return FfiConverterInt8.lift(rust_call(_UniFFILib.library_cbd2_i8_inc_test,
         FfiConverterInt8.lower(value)))
 
 
@@ -747,7 +747,7 @@ def i8_inc_test(value):
 def i16_inc_test(value):
     value = int(value)
     
-    return FfiConverterInt16.lift(rust_call(_UniFFILib.library_635_i16_inc_test,
+    return FfiConverterInt16.lift(rust_call(_UniFFILib.library_cbd2_i16_inc_test,
         FfiConverterInt16.lower(value)))
 
 
@@ -755,7 +755,7 @@ def i16_inc_test(value):
 def i32_inc_test(value):
     value = int(value)
     
-    return FfiConverterInt32.lift(rust_call(_UniFFILib.library_635_i32_inc_test,
+    return FfiConverterInt32.lift(rust_call(_UniFFILib.library_cbd2_i32_inc_test,
         FfiConverterInt32.lower(value)))
 
 
@@ -763,7 +763,7 @@ def i32_inc_test(value):
 def i64_inc_test(value):
     value = int(value)
     
-    return FfiConverterInt64.lift(rust_call(_UniFFILib.library_635_i64_inc_test,
+    return FfiConverterInt64.lift(rust_call(_UniFFILib.library_cbd2_i64_inc_test,
         FfiConverterInt64.lower(value)))
 
 
@@ -771,7 +771,7 @@ def i64_inc_test(value):
 def u8_inc_test(value):
     value = int(value)
     
-    return FfiConverterUInt8.lift(rust_call(_UniFFILib.library_635_u8_inc_test,
+    return FfiConverterUInt8.lift(rust_call(_UniFFILib.library_cbd2_u8_inc_test,
         FfiConverterUInt8.lower(value)))
 
 
@@ -779,7 +779,7 @@ def u8_inc_test(value):
 def u16_inc_test(value):
     value = int(value)
     
-    return FfiConverterUInt16.lift(rust_call(_UniFFILib.library_635_u16_inc_test,
+    return FfiConverterUInt16.lift(rust_call(_UniFFILib.library_cbd2_u16_inc_test,
         FfiConverterUInt16.lower(value)))
 
 
@@ -787,7 +787,7 @@ def u16_inc_test(value):
 def u32_inc_test(value):
     value = int(value)
     
-    return FfiConverterUInt32.lift(rust_call(_UniFFILib.library_635_u32_inc_test,
+    return FfiConverterUInt32.lift(rust_call(_UniFFILib.library_cbd2_u32_inc_test,
         FfiConverterUInt32.lower(value)))
 
 
@@ -795,7 +795,7 @@ def u32_inc_test(value):
 def u64_inc_test(value):
     value = int(value)
     
-    return FfiConverterUInt64.lift(rust_call(_UniFFILib.library_635_u64_inc_test,
+    return FfiConverterUInt64.lift(rust_call(_UniFFILib.library_cbd2_u64_inc_test,
         FfiConverterUInt64.lower(value)))
 
 
@@ -803,7 +803,7 @@ def u64_inc_test(value):
 def float_inc_test(value):
     value = float(value)
     
-    return FfiConverterFloat.lift(rust_call(_UniFFILib.library_635_float_inc_test,
+    return FfiConverterFloat.lift(rust_call(_UniFFILib.library_cbd2_float_inc_test,
         FfiConverterFloat.lower(value)))
 
 
@@ -811,7 +811,7 @@ def float_inc_test(value):
 def double_inc_test(value):
     value = float(value)
     
-    return FfiConverterDouble.lift(rust_call(_UniFFILib.library_635_double_inc_test,
+    return FfiConverterDouble.lift(rust_call(_UniFFILib.library_cbd2_double_inc_test,
         FfiConverterDouble.lower(value)))
 
 
@@ -819,7 +819,7 @@ def double_inc_test(value):
 def string_inc_test(value):
     value = value
     
-    return FfiConverterString.lift(rust_call(_UniFFILib.library_635_string_inc_test,
+    return FfiConverterString.lift(rust_call(_UniFFILib.library_cbd2_string_inc_test,
         FfiConverterString.lower(value)))
 
 
@@ -827,7 +827,7 @@ def string_inc_test(value):
 def byref_inc_test(value):
     value = value
     
-    return FfiConverterTypePoint.lift(rust_call(_UniFFILib.library_635_byref_inc_test,
+    return FfiConverterTypePoint.lift(rust_call(_UniFFILib.library_cbd2_byref_inc_test,
         FfiConverterTypePoint.lower(value)))
 
 
@@ -835,7 +835,7 @@ def byref_inc_test(value):
 def optional_type_inc_test(value):
     value = (None if value is None else int(value))
     
-    return FfiConverterOptionalInt32.lift(rust_call(_UniFFILib.library_635_optional_type_inc_test,
+    return FfiConverterOptionalInt32.lift(rust_call(_UniFFILib.library_cbd2_optional_type_inc_test,
         FfiConverterOptionalInt32.lower(value)))
 
 
@@ -843,7 +843,7 @@ def optional_type_inc_test(value):
 def vector_inc_test(value):
     value = list(x for x in value)
     
-    return FfiConverterSequenceString.lift(rust_call(_UniFFILib.library_635_vector_inc_test,
+    return FfiConverterSequenceString.lift(rust_call(_UniFFILib.library_cbd2_vector_inc_test,
         FfiConverterSequenceString.lower(value)))
 
 
@@ -851,7 +851,7 @@ def vector_inc_test(value):
 def hash_map_inc_test(value):
     value = dict((k, int(v)) for (k, v) in value.items())
     
-    return FfiConverterMapStringInt32.lift(rust_call(_UniFFILib.library_635_hash_map_inc_test,
+    return FfiConverterMapStringInt32.lift(rust_call(_UniFFILib.library_cbd2_hash_map_inc_test,
         FfiConverterMapStringInt32.lower(value)))
 
 
@@ -859,7 +859,7 @@ def hash_map_inc_test(value):
 def void_inc_test(value):
     value = int(value)
     
-    rust_call(_UniFFILib.library_635_void_inc_test,
+    rust_call(_UniFFILib.library_cbd2_void_inc_test,
         FfiConverterInt32.lower(value))
 
 
@@ -868,7 +868,7 @@ def error_inc_test(a,b):
     
     b = int(b)
     
-    return FfiConverterUInt64.lift(rust_call_with_error(FfiConverterTypeArithmeticError,_UniFFILib.library_635_error_inc_test,
+    return FfiConverterUInt64.lift(rust_call_with_error(FfiConverterTypeArithmeticError,_UniFFILib.library_cbd2_error_inc_test,
         FfiConverterUInt64.lower(a),
         FfiConverterUInt64.lower(b)))
 

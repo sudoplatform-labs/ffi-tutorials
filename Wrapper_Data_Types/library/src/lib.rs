@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-include!("library.uniffi.uniffi.rs");
+uniffi::include_scaffolding!("library");
 
 //------------------------------------------------------------
 //----- Custom Error Types -----------------------------------

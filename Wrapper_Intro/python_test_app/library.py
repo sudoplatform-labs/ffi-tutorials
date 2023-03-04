@@ -38,14 +38,14 @@ class RustBuffer(ctypes.Structure):
 
     @staticmethod
     def alloc(size):
-        return rust_call(_UniFFILib.ffi_library_788c_rustbuffer_alloc, size)
+        return rust_call(_UniFFILib.ffi_library_eb66_rustbuffer_alloc, size)
 
     @staticmethod
     def reserve(rbuf, additional):
-        return rust_call(_UniFFILib.ffi_library_788c_rustbuffer_reserve, rbuf, additional)
+        return rust_call(_UniFFILib.ffi_library_eb66_rustbuffer_reserve, rbuf, additional)
 
     def free(self):
-        return rust_call(_UniFFILib.ffi_library_788c_rustbuffer_free, self)
+        return rust_call(_UniFFILib.ffi_library_eb66_rustbuffer_free, self)
 
     def __str__(self):
         return "RustBuffer(capacity={}, len={}, data={})".format(
@@ -344,32 +344,32 @@ def loadIndirect():
 # This is an implementation detail which will be called internally by the public API.
 
 _UniFFILib = loadIndirect()
-_UniFFILib.library_788c_bool_inc_test.argtypes = (
+_UniFFILib.library_eb66_bool_inc_test.argtypes = (
     ctypes.c_int8,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.library_788c_bool_inc_test.restype = ctypes.c_int8
-_UniFFILib.ffi_library_788c_rustbuffer_alloc.argtypes = (
+_UniFFILib.library_eb66_bool_inc_test.restype = ctypes.c_int8
+_UniFFILib.ffi_library_eb66_rustbuffer_alloc.argtypes = (
     ctypes.c_int32,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.ffi_library_788c_rustbuffer_alloc.restype = RustBuffer
-_UniFFILib.ffi_library_788c_rustbuffer_from_bytes.argtypes = (
+_UniFFILib.ffi_library_eb66_rustbuffer_alloc.restype = RustBuffer
+_UniFFILib.ffi_library_eb66_rustbuffer_from_bytes.argtypes = (
     ForeignBytes,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.ffi_library_788c_rustbuffer_from_bytes.restype = RustBuffer
-_UniFFILib.ffi_library_788c_rustbuffer_free.argtypes = (
+_UniFFILib.ffi_library_eb66_rustbuffer_from_bytes.restype = RustBuffer
+_UniFFILib.ffi_library_eb66_rustbuffer_free.argtypes = (
     RustBuffer,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.ffi_library_788c_rustbuffer_free.restype = None
-_UniFFILib.ffi_library_788c_rustbuffer_reserve.argtypes = (
+_UniFFILib.ffi_library_eb66_rustbuffer_free.restype = None
+_UniFFILib.ffi_library_eb66_rustbuffer_reserve.argtypes = (
     RustBuffer,
     ctypes.c_int32,
     ctypes.POINTER(RustCallStatus),
 )
-_UniFFILib.ffi_library_788c_rustbuffer_reserve.restype = RustBuffer
+_UniFFILib.ffi_library_eb66_rustbuffer_reserve.restype = RustBuffer
 
 # Public interface members begin here.
 
@@ -420,7 +420,7 @@ class FfiConverterString:
 def bool_inc_test(value):
     value = bool(value)
     
-    return FfiConverterBool.lift(rust_call(_UniFFILib.library_788c_bool_inc_test,
+    return FfiConverterBool.lift(rust_call(_UniFFILib.library_eb66_bool_inc_test,
         FfiConverterBool.lower(value)))
 
 
