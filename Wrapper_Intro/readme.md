@@ -67,6 +67,14 @@ cargo new --lib library
 Next, navigate into the new *library* sub-directory just created, open Cargo.toml, and add the following:
 
 ```
+[package]
+name = "library"
+version = "0.1.0"
+authors = ["Steve McCown <smccown@anonyome.com>"]
+license = "Apache version 2.0"
+edition = "2018"
+build = "build.rs"
+
 [dependencies]
 uniffi = { version = "0.23.0" }
 uniffi_bindgen = "0.23.0"
@@ -99,7 +107,9 @@ fn bool_inc_test(value: bool) -> bool {
 
 The uniffi include macro instructs the Rust compiler to load the scaffolding code, which will be generated during the build process.  The Rust function being exported is a simple function that receives a boolean value and returns its inverse.  Since ```bool_inc_test( )``` is a top-level function, it is part of the API that the library will expose externally ... which is convenient, since it's the only function in the library.  
 
-## Create The uniffi-bindgen ExecutableA previously described, the Cargo.toml file contains a reference to the uniffi-bindgen binary, which looks like this:
+## Create The uniffi-bindgen Executable
+
+A previously described, the Cargo.toml file contains a reference to the uniffi-bindgen binary, which looks like this:
 
 ```
 [[bin]]
@@ -160,7 +170,8 @@ namespace library {
 In UDL, all of the API functions must be specified in the UDL file under the *namespace* block.  The UDL reads like a type of pseudocode that easily describes the function definition.  The types used in this file adhere to the [UDL specification](https://mozilla.github.io/uniffi-rs/udl_file_spec.html).  UDL can be used to specify many other types, enumerations, structs, dictionaries, interfaces, objects, and errors; however, those are not covered in this tutorial. 
 
 ## Generate The Scaffolding Layer
-The *scaffolding layer* is set of code that exposes the library's API and serializes the specified data types as an enhanced FFI layer.  In previous uniffi versions, the scaffolding layer used to be generated from the command terminal.  Starting in version 0.23.0, this is accomplished in the *build.rs* file, which cargo uses to perform build steps.  To do this, create build.rs next to Cargo.toml and add the following:
+
+The *scaffolding layer* is set of code that exposes the library's API and serializes the specified data types as an enhanced FFI layer.  In previous uniffi versions, the scaffolding layer used to be generated from the command terminal.  Starting in version 0.23.0, this is accomplished in the *build.rs* file, which cargo uses to perform build steps.  To do this, create build.rs next to Cargo.toml and add the following:
 
 ```
 fn main() {
