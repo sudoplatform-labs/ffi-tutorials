@@ -1,0 +1,51 @@
+[Error]
+enum MyArithmeticError {
+    "IntegerOverflow",
+};
+
+interface Point {
+    constructor(f64 x, f64 y);
+    f64 get_x();
+
+    [Self=ByArc]
+    void set_x(f64 x);
+
+    f64 get_y();
+    
+    [Self=ByArc]
+    void set_y(f64 y);
+};
+
+namespace library {
+
+    boolean bool_inc_test(boolean value);
+
+    i8 i8_inc_test(i8 value);
+    i16 i16_inc_test(i16 value);
+    i32 i32_inc_test(i32 value);
+    i64 i64_inc_test(i64 value);
+
+    u8 u8_inc_test(u8 value);
+    u16 u16_inc_test(u16 value);
+    u32 u32_inc_test(u32 value);
+    u64 u64_inc_test(u64 value);
+
+    f32 float_inc_test(f32 value);
+
+    f64 double_inc_test(f64 value);
+
+    string string_inc_test(string value);
+
+    void byref_inc_test([ByRef] Point value);
+
+    i32? optional_type_inc_test(i32? value);
+
+    sequence<string> vector_inc_test(sequence<string> value);
+
+    record<DOMString, i32> hash_map_inc_test(record<DOMString, i32> value);
+
+    void void_inc_test(i32 value);
+
+    [Throws=MyArithmeticError]
+    i32 error_inc_test(i32 a, i32 b);
+};
