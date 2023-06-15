@@ -13,7 +13,7 @@ The [Java](https://www.java.com/en/) programming language has many innovative fe
 For this tutorial, I will use the same library and test app format that I used in Part 2, so all of that should be familiar.  I will also discuss the differences or nuances that I discovered along the way.  As a quick summary, this tutorial describes how to:
 
 1. **Rust:** Design and build a Rust library
-2. **uniffi:** Create a UDL file describing the Rust library's accesible elements
+2. **uniffi:** Create a UDL file describing the Rust library's accessible elements
 3. **Kotlin:** Build a Kotlin wrapper / library
 4. **Java** Create a Java test app that includes the Kotlin library 
 
@@ -77,7 +77,7 @@ crate-type = ["cdylib"]
 name = "library"
 ```
 
-The ```[dependencies]``` section instructs cargo to load and use uniffi version 0.23.0.  (uniffi-bindgen is now built while building the app and is described below.). ```[build-dependencies]``` section instructs cargo to use uniffi version 0.23.0 and references the *build* and *cli* features.  *cli* is specified to allow building the uniffi-bindgen tool.  The ```[bin``` section shows that a binary target called *uniffi-bindgen* will be created from a file called uniffi-bindgen.rs (located next to the Cargo.toml file).  The ```[lib]``` section allows developers to specify that the target is a cdylib and *name* is user defined.  For this tutorial, I have named it *library*, so it's clear what is being created. 
+The ```[dependencies]``` section instructs cargo to load and use uniffi version 0.23.0.  (uniffi-bindgen is now built while building the app and is described below.). ```[build-dependencies]``` section instructs cargo to use uniffi version 0.23.0 and references the *build* and *cli* features.  *cli* is specified to allow building the uniffi-bindgen tool.  The ```[bin]``` section shows that a binary target called *uniffi-bindgen* will be created from a file called uniffi-bindgen.rs (located next to the Cargo.toml file).  The ```[lib]``` section allows developers to specify that the target is a cdylib and *name* is user defined.  For this tutorial, I have named it *library*, so it's clear what is being created. 
 
 ## Create The uniffi-bindgen ExecutableA previously described, the Cargo.toml file contains a reference to the uniffi-bindgen binary, which looks like this:
 
@@ -102,7 +102,7 @@ This instructs Cargo to launch the newly built uniffi-bindgen and tell it to cal
 To build the uniffi-bindgen binary, please execute the following:
 
 ```
-cargo run --features=uniffi/cli --bin uniffi-bindgen
+cargo run
 ```
 
 Once the build process completes, it should display something like this:
@@ -144,7 +144,7 @@ Just like in Part 2, several public test functions will be created and added to 
 Now, add the same boolean function that was created in Part 2.  The function receives a boolean value as an input parameter and returns its inverse.
 
 ```
-fn bool_inc_test(value: bool) -> bool {
+pub fn bool_inc_test(value: bool) -> bool {
 
     return !value
 }
@@ -211,7 +211,7 @@ pub fn string_inc_test(value: String) -> String {
 ```
 
 ### Add A Pass By Reference Test Routine
-*Pass by reference* parameters pass allow programmers to pass references to values (rather than the values themselves) into a function without actually copying the referenced data.  Since Rust implements strict ownership rules, multiple functions (e.g., caller and called) cannot write to the same data element, simultaneously.  While this test function shows how *pass by reference* paramenters are input and used, Rust's ownership rules constrain multiple write accesses.  For a more detailed view of the ownership rules, please see the [Rust Manual](https://doc.rust-lang.org/rust.html).  
+*Pass by reference* parameters pass allow programmers to pass references to values (rather than the values themselves) into a function without actually copying the referenced data.  Since Rust implements strict ownership rules, multiple functions (e.g., caller and called) cannot write to the same data element, simultaneously.  While this test function shows how *pass by reference* parameters are input and used, Rust's ownership rules constrain multiple write accesses.  For a more detailed view of the ownership rules, please see the [Rust Manual](https://doc.rust-lang.org/rust.html).  
 
 As part of demonstrating *pass by reference* parameters, this test creates and uses a new data type structure.  The following *Point* structure defines a point value with an x-coordinate and a y-coordinate, which are each defined as 64-bit floating point values.  Add the following structure definition near the top of the lib.rs file:
 
@@ -269,7 +269,7 @@ In Rust, optional values can represent either a valid value (of the specified ty
 
 
 ### Add A Vector Test Routine
-In Rust, a vector is analagous to a re-sizable array.  In this test example, create a function that receives a mutuable vector that will contain Strings (i.e., Vec<String>), creates a duplicate of the input vector, and appends the input value to the newly created value.  More simply stated, this function is returning the concatenation of a copy of the input value with itself.
+In Rust, a vector is analogous to a re-sizable array.  In this test example, create a function that receives a mutable vector of Strings (i.e., Vec<String>).  Inside the function, create a local variable *new_value* and initialize it with the value parameter.  Next, append another copy of the value parameter to *new_value*.  More simply stated, this function is returning a concatenation of two copies of the input value, as follows:
 
 ```
 pub fn vector_inc_test(mut value: Vec<String>) -> Vec<String> {
@@ -307,7 +307,7 @@ pub fn void_inc_test(_value: i32) -> () {
 ### Add An Error Code Test Routine
 Throwing and catching exceptions (errors) is common practice in modern programming languages.  In Rust, it is also possible to create custom exception types.  These exceptions can be *thrown* in an underlying library, pass through the uniffi scaffolding and language wrapper layers, and then be handled in an exception handler provided by the higher-level application.  
 
-For example, ArithmeticError is a custom Rust error enum (borrowed from one of the uniffi examples) that can be thrown when the sum of two values overflows the range of 32-bit unsigned integers.  However, while the name *ArithmeticError* is available for programmers in Rust and Kotlin, it is a reserved word in Java and causes a build error when Java programmers attempt to use it.  For this reason, I have modifed it slightly as *MyArithmeticError*.  With this change, please put the following error definition near the top of the lib.rs file:
+For example, ArithmeticError is a custom Rust error enum (borrowed from one of the uniffi examples) that can be thrown when the sum of two values overflows the range of 32-bit unsigned integers.  However, while the name *ArithmeticError* is available for programmers in Rust and Kotlin, it is a reserved word in Java and causes a build error when Java programmers attempt to use it.  For this reason, I have modified it slightly as *MyArithmeticError*.  With this change, please put the following error definition near the top of the lib.rs file:
 
 ```
 #[derive(Debug, thiserror::Error)]
@@ -422,7 +422,7 @@ Since we added a custom build.rs file (see above), building the Rust library wil
 
 ## Generating the Kotlin Language Wrapper
 
-With the newly created *uniffi-bindgen*, we can create the Kotlin wrapper via the commandline by entering:
+With the newly created *uniffi-bindgen*, we can create the Kotlin wrapper via the command line by entering:
 
  ```cargo run --bin uniffi-bindgen generate src/library.udl --language kotlin```
 
@@ -431,11 +431,11 @@ Executing this command will create *./src/uniffi/library/library.kt*, which cont
 
 ## Generate a JAR File From the Kotlin Code
 
-At this point, the Kotlin wrapper has been created from the Rust library.  In order to use the wrapper from within a Java app, it is necessary to build it into a JAR file.  For this step, please install the [Kotlin compiler](https://kotlinlang.org/docs/command-line.html).  Once installed, please go to the *./library* folder and invoke the Kotlin compiler to create a JAR file as follows (from the commandline):
+At this point, the Kotlin wrapper has been created from the Rust library.  In order to use the wrapper from within a Java app, it is necessary to build it into a JAR file.  For this step, please install the [Kotlin compiler](https://kotlinlang.org/docs/command-line.html).  Once installed, please go to the *./library* folder and invoke the Kotlin compiler to create a JAR file as follows (from the command line):
 
 ```kotlinc src/uniffi/library/library.kt -classpath ./jna-5.13.0.jar -d target/debug/library.jar```
 
-Notice the inclusion of the Java Native Access (JNA) library.  When building from the commandline, it is ncessary to specify the JNA library in the classpath.  In this case, I am presuming that I have copied *jna-5.13.0.jar* into the local directory.  I did this for brevity in this tutorial.  Likely, you have installed it in a more standard location and will want to specify the actual path for classpath.  For convenience, I have instructed kotlinc to output the resulting JAR file into the *./target/debug* folder.
+Notice the inclusion of the Java Native Access (JNA) library.  When building from the command line, it is necessary to specify the JNA library in the classpath.  To get the JNA library, please download it from the [repository](https://mvnrepository.com/artifact/net.java.dev.jna/jna/5.13.0) and copy *jna-5.13.0.jar* into the local directory.  This copy step is only done for brevity and readability in this tutorial.  In practice, you will have installed the JNA library to a more standard location and will specify the actual path in your build tool.  For convenience, I have instructed kotlinc to output the resulting JAR file into the *./target/debug* folder.
 
 
 ## Java Application: Calling the Rust Library
@@ -570,10 +570,6 @@ public class TestApp {
         int val = 1;
         LibraryKt.voidIncTest(val);
 
-        System.out.println("Running void return value test...");
-        int val = 1;
-        LibraryKt.voidIncTest(val);
-
         System.out.println("Running Error Code Test On Success test...");
         int val1 = 0;
         int val2 = 1;
@@ -608,16 +604,16 @@ In these tests, initial values are created and passed into various library funct
 
 
 ## Building the Java Test App
-For standard build processing, a tool such as [Gradel](https://gradle.org) or [Maven](https://maven.apache.org/index.html) will be used to build the Java sources and bundle the requisite libraries.  However, for the purposes of this tutorial, I wanted to demonstrate each step, so I will perform the build functions manually via the commandline.  To begin, please go into the *java* directory where the TestApp.java file is located.
+For standard build processing, a tool such as [Gradle](https://gradle.org) or [Maven](https://maven.apache.org/index.html) will be used to build the Java sources and bundle the requisite libraries.  However, for the purposes of this tutorial, I wanted to demonstrate each step, so I will perform the build functions manually via the command line.  To begin, please go into the *java* directory where the TestApp.java file is located.
 
 To build and run the Java test app, the following dependencies must added to the bundle.  Please copy the following to *./java*:
 
-1. **Java Native Access (JNA):** JNA provides some native code that enable Java apps to run more effectively on a specific platforms.  To do this, please [download](https://mvnrepository.com/artifact/net.java.dev.jna/jna/5.13.0) and copy *jna-5.13.0.jar* into *./java*.
+1. **Java Native Access (JNA):** JNA provides some native code that enable Java apps to run more effectively on a specific platforms.  To do this, please copy *jna-5.13.0.jar* (previously downloaded) into *./java*.
 2. **Kotlin Standard Library** The Kotlin Standard Library contains the basic code necessary to run Kotlin bytecode and to do so in a Java environment.  To do this, please [download](https://mvnrepository.com/artifact/org.jetbrains.kotlin/kotlin-stdlib-jdk8/1.8.21) and copy *kotlin-stdlib-1.8.21.jar* into *./java*.
 3. **Library for uniffi** the dynamically-linked library for uniffi support has been built and is located in *./library/target/debug*.  Please copy *liblibrary.dylib* to *./java* and rename it to *libuniffi_library.dylib*.  (NOTE:  The renaming step is due to a naming issue with the uniffi build process and will be corrected in an upcoming version of uniffi.)
 4. **Kotlin JAR File For The Rust Library** the Kotline JAR file created from the Rust library and Kotlin wrapper has been built and is located in *./library/target/debug*.  Please copy *library.lib* to *./java*.
 
-To build the Java test app, please execute the following (from the commandline):
+To build the Java test app, please execute the following (via the command line) from within *./java*:
 
 ```javac -cp library.jar TestApp.java```
 
@@ -660,6 +656,6 @@ Running Error Code Test On Failure test...
 
 ## Conclusion
 
-Developing reusable libraries in Rust is an exellent way to build the business logic once and then reuse it natively across several languages and platforms.  While FFI makes it possible to call Rust libraries from a variety of different programming languages, it requires application developers to make C-language calls into linked libraries.  Since many developers are unfamiliar with C and it's unique requirements (especially with memory management), it can be confusing and burdensome.  
+Developing reusable libraries in Rust is an excellent way to build the business logic once and then reuse it natively across several languages and platforms.  While FFI makes it possible to call Rust libraries from a variety of different programming languages, it requires application developers to make C-language calls into linked libraries.  Since many developers are unfamiliar with C and its unique requirements (especially with memory management), it can be confusing and burdensome.  
 
-The uniffi tool from Mozilla dramatically simplifies the software development process by automatically generating the scaffolding layer and building language-specific bindings, which simplify the integration effort for application developers.  Having completed this tutorial, you should now be ready to import Rust libraries generated with uniffi into other language environments, as well.  This presents many reusibility benefits with the only requirement that implementers be aware of integration requirements between the languages used (e.g., Java and Kotlin).  
+The uniffi tool from Mozilla dramatically simplifies the software development process by automatically generating the scaffolding layer and building language-specific bindings, which simplify the integration effort for application developers.  Having completed this tutorial, you should now be ready to import Rust libraries generated with uniffi into other language environments, as well.  This presents many reusability benefits with the only requirement that implementers be aware of integration requirements between the languages used (e.g., Java and Kotlin).  
