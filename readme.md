@@ -16,3 +16,5 @@ For these tutorials, Rust is used for the underlying libraries and test applicat
 2. [Creating Language Wrappers For Rust Libraries - Part 1](./Wrapper_Intro) - discusses the need for language specific library wrapper layers and demonstrates how to use the Mozilla uniffi tool for creating wrappers.
 
 3. [Creating Language Wrappers For Rust Libraries - Part 2](./Wrapper_Data_Types) - this tutorial builds upon the previous tutorial and demonstrates how to convert data types between Rust, Swift, and Python.
+
+4. [Creating Language Wrappers For Rust Libraries - Part 3](./Wrapper_Java_Kotlin) - this tutorial builds upon Part 2 and demonstrates how to create a Kotlin wrapper for a Rust library and then consume the resulting Kotlin library in a Java test app.
