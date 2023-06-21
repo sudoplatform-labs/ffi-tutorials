@@ -3,9 +3,17 @@ enum ArithmeticError {
     "IntegerOverflow",
 };
 
-dictionary Point {
-    double x;
-    double y;
+interface Point {
+    constructor(f64 x, f64 y);
+    f64 get_x();
+
+    [Self=ByArc]
+    void set_x(f64 x);
+
+    f64 get_y();
+    
+    [Self=ByArc]
+    void set_y(f64 y);
 };
 
 namespace library {
@@ -28,7 +36,7 @@ namespace library {
 
     string string_inc_test(string value);
 
-    Point byref_inc_test([ByRef] Point value);
+    void byref_inc_test([ByRef] Point value);
 
     i32? optional_type_inc_test(i32? value);
 

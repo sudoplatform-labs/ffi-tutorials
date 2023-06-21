@@ -1,6 +1,5 @@
 use std::os::raw::c_char;
 use std::ffi::CStr;
-use std::ffi::CString;
 
 #[no_mangle]
 pub extern "C" fn count_characters(ptr: *const c_char) -> u32 {

@@ -35,15 +35,20 @@ To quickly build and test the sample code, please do the following:
 	 `git clone git@github.com:sudoplatform-labs/ffi-tutorials.git`
 	 
 2. Build the library
+
 	1. Navigate into the "ffi-tutorial/countchars" sub-directory and type
 	
 		`cargo build`
 		
 	2. The created libraries (libcharcount.a and libcharcount.dylib) will be created in ./target/debug/
+
 3. Build and run the sample C-language test app
+
 	1. Navigate into the project sub-directory "test_app/" and build the test application by typing:
 		
 		`gcc main.c -L ../countchars/target/debug -lcountchars -o main`
+		
+		*Note:  If your computer does not have gcc already installed, the GNU website has a [page](https://gcc.gnu.org/install/binaries.html) with links to instructions on how to install pre-built binaries for several platforms.  Also, feel free to experiment with building the library using other C compilers.*
 		
 	2. Run the test app by typing:
 		

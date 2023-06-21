@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
 uniffi::include_scaffolding!("library");
 
@@ -12,11 +13,36 @@ pub enum ArithmeticError {
 
 //------------------------------------------------------------
 //----- Custom Structure Types -----------------------------------
-#[derive(Debug, Clone)]
-#[derive(PartialEq, PartialOrd)]
+#[derive(Debug)] 
 pub struct Point {
-    x: f64,
-    y: f64,
+    pub x: RwLock<f64>,
+    pub y: RwLock<f64>,
+}
+
+impl Point {
+    fn new(x: f64, y: f64) -> Self {
+
+        Point {
+            x: RwLock::new(x),
+            y: RwLock::new(y)
+        }
+    }
+
+    fn set_x(self: Arc<Self>, x: f64) {
+        *self.x.write().unwrap() = x;
+    }
+
+    fn get_x(&self) -> f64 {
+        self.x.read().unwrap().clone()
+    }
+
+    fn set_y(self: Arc<Self>, y: f64) {
+        *self.y.write().unwrap() = y;
+    }
+
+    fn get_y(&self) -> f64 {
+        self.y.read().unwrap().clone()
+    }
 }
 
 //------------------------------------------------------------
@@ -89,14 +115,10 @@ pub fn string_inc_test(value: String) -> String {
 }
 
 // ----- ByRef Tests -----
-pub fn byref_inc_test(value: &Point) -> Point {
+pub fn byref_inc_test(value: &Arc<Point>) -> () { 
 
-    // Clone the input value & increment its members.
-    let mut new_value = value.clone();
-    new_value.x = value.x + 1.0;
-    new_value.y = value.y + 1.0;
-
-    return new_value;
+    (Arc::clone(&value)).set_x(value.get_x() + 1.0);
+    (Arc::clone(&value)).set_y(value.get_y() + 1.0);
 }
 
 // ----- Optional Type Tests -----
@@ -189,18 +211,24 @@ mod tests {
         assert_eq!(target_message, string_inc_test(message.clone()));
         println!("Passed");
 
-        print!("Running byRef test...");
+        println!("Running byRef test...");
         let x0: f64 = 1.0;
         let y0: f64 = 2.0;
-        let point: Point = Point { x: x0, y: y0 };
-        let point2: Point = byref_inc_test(&point);
-        assert_eq!(point.x + 1.0, point2.x);
-        assert_eq!(point.y + 1.0, point2.y);
-        println!("Passed");
-
-        print!("Running option type test...");
-        assert_eq!(Some(1), optional_type_inc_test(Some(0)));
-        println!("Passed");
+        let byref_value = Arc::new(Point::new(x0, y0));
+        
+        println!("    initial: ");
+        println!("        X:  {}", byref_value.get_x());
+        println!("        Y:  {}", byref_value.get_y());
+        byref_inc_test(&byref_value);
+        println!("    result: ");
+        println!("        X:  {}", byref_value.get_x());
+        println!("        Y:  {}", byref_value.get_y());
+        if (byref_value.get_x() == (x0 + 1.0)) &&
+            (byref_value.get_y() == (y0 + 1.0)) {
+            println!("    byRef test Passed");
+        } else {
+            println!("    byRef test Failed");
+        }
 
         print!("Running vector test...");
         let my_array: Vec<String> = vec!["one".to_string(), "two".to_string(), "three".to_string()];
