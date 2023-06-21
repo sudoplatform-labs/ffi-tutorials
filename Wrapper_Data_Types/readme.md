@@ -777,7 +777,7 @@ At this point, the test app should import the required files, link to the librar
  70 print("Running byRef test...");
  71 let x0 = 1.0;
  72 let y0 = 2.0;
- 73 let byrefValue: Point = Point(x: 1.0, y: 2.0);
+ 73 let byrefValue: Point = Point(x: x0, y: y0);
  74 byrefIncTest(value: byrefValue);
  75 assert(byrefValue.getX() == (x0 + 1.0), "byRef test failed");
  76 assert(byrefValue.getY() == (y0 + 1.0), "byRef test failed");
