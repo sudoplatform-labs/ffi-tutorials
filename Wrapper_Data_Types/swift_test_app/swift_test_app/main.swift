@@ -68,10 +68,12 @@ assert(stringIncTest(value: message) == targetMessage, "string test failed");
 
 
 print("Running byRef test...");
+let x0 = 1.0;
+let y0 = 2.0;
 let byrefValue: Point = Point(x: 1.0, y: 2.0);
-let byrefResult: Point = byrefIncTest(value: byrefValue);
-assert(byrefResult.x == (byrefValue.x + 1.0), "byRef test failed");
-assert(byrefResult.y == (byrefValue.y + 1.0), "byRef test failed");
+byrefIncTest(value: byrefValue);
+assert(byrefValue.getX() == (x0 + 1.0), "byRef test failed");
+assert(byrefValue.getY() == (y0 + 1.0), "byRef test failed");
 
 
 print("Running option type test...");

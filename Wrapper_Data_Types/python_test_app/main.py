@@ -68,10 +68,12 @@ print("Passed")
 
 
 print("Running byRef test...", end="\t")
-byrefValue: library.Point = library.Point(1.0, 2.0)
-byrefResult: library.Point = library.byref_inc_test(byrefValue)
-assert (byrefResult.x == (byrefValue.x + 1.0)), "byRef test failed"
-assert (byrefResult.y == (byrefValue.y + 1.0)), "byRef test failed"
+x0: numpy.int32 = 1.0
+y0: numpy.int32 = 2.0
+byrefValue: library.Point = library.Point(x0, y0)
+library.byref_inc_test(byrefValue)
+assert (byrefValue.get_x() == (x0 + 1.0)), "byRef test failed"
+assert (byrefValue.get_y() == (y0 + 1.0)), "byRef test failed"
 print("Passed")
 
 

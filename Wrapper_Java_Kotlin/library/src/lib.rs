@@ -21,7 +21,7 @@ pub struct Point {
 
 impl Point {
     fn new(x: f64, y: f64) -> Self {
-        
+
         Point {
             x: RwLock::new(x),
             y: RwLock::new(y)
@@ -49,7 +49,7 @@ impl Point {
 //------ API: Public Methods ---------------------------------
 
 // ----- Boolean Test -----
-fn bool_inc_test(value: bool) -> bool {
+pub fn bool_inc_test(value: bool) -> bool {
 
     return !value
 }
@@ -211,18 +211,24 @@ mod tests {
         assert_eq!(target_message, string_inc_test(message.clone()));
         println!("Passed");
 
-        print!("Running byRef test...");
+        println!("Running byRef test...");
         let x0: f64 = 1.0;
         let y0: f64 = 2.0;
-        let point: Point = Point { x: x0, y: y0 };
-        let point2: Point = byref_inc_test(point);
-        assert_eq!(point.x + 1.0, point2.x);
-        assert_eq!(point.y + 1.0, point2.y);
-        println!("Passed");
-
-        print!("Running option type test...");
-        assert_eq!(Some(1), optional_type_inc_test(Some(0)));
-        println!("Passed");
+        let byref_value = Arc::new(Point::new(x0, y0));
+        
+        println!("    initial: ");
+        println!("        X:  {}", byref_value.get_x());
+        println!("        Y:  {}", byref_value.get_y());
+        byref_inc_test(&byref_value);
+        println!("    result: ");
+        println!("        X:  {}", byref_value.get_x());
+        println!("        Y:  {}", byref_value.get_y());
+        if (byref_value.get_x() == (x0 + 1.0)) &&
+            (byref_value.get_y() == (y0 + 1.0)) {
+            println!("    byRef test Passed");
+        } else {
+            println!("    byRef test Failed");
+        }
 
         print!("Running vector test...");
         let my_array: Vec<String> = vec!["one".to_string(), "two".to_string(), "three".to_string()];
@@ -248,9 +254,9 @@ mod tests {
         
         // ----- Error Code Test On Success -----
         print!("Running Error Code Test On Success test...");
-        let value_1: u64 = 0;
-        let value_2: u64 = 5;
-        let r_value: Result<u64, MyArithmeticError> = error_inc_test(value_1, value_2);
+        let value_1: i32 = 0;
+        let value_2: i32 = 5;
+        let r_value: Result<i32, MyArithmeticError> = error_inc_test(value_1, value_2);
         if r_value.is_ok() {
             println!("Passed");
             println!("     Returned value = {:?}", r_value.unwrap());

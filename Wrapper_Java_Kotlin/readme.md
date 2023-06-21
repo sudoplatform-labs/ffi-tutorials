@@ -420,6 +420,180 @@ This will build the Rust library according to the settings in Cargo.toml.  If ev
 Since we added a custom build.rs file (see above), building the Rust library will also create the uniffi-bindgen executable.
 
 
+## Testing the Rust Library
+
+It's always good practice to test a library before delivering it to other code that links to it.  To test the library just created, please add the following test functions after the last library function:
+
+```
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    pub fn internal() {
+
+        println!("\n\n----- Start of Tests -----");
+        print!("Running boolean test...");
+        assert_eq!(false, bool_inc_test(true));
+        println!("Passed");
+
+        print!("Running signed int tests...");
+        assert_eq!(1, i8_inc_test(0));
+        assert_eq!(1, i16_inc_test(0));
+        assert_eq!(1, i32_inc_test(0));
+        assert_eq!(1, i64_inc_test(0));
+        println!("Passed");
+
+        print!("Running unsigned int tests...");
+        assert_eq!(1, u8_inc_test(0));
+        assert_eq!(1, u16_inc_test(0));
+        assert_eq!(1, u32_inc_test(0));
+        assert_eq!(1u64, u64_inc_test(0));
+        println!("Passed");
+
+        print!("Running float test...");
+        let float_value: f32 = 0.0;
+        assert_eq!(float_value + 1.0, float_inc_test(float_value));
+        println!("Passed");
+
+        print!("Running double test...");
+        let double_value: f64 = 0.0;
+        assert_eq!(double_value + 1.0, double_inc_test(double_value));
+        println!("Passed");
+
+        print!("Running String test...");
+        let message: String = "Hello World!".to_string();
+        let target_message: String = format!("{}{}", message, message);
+        assert_eq!(target_message, string_inc_test(message.clone()));
+        println!("Passed");
+
+        println!("Running byRef test...");
+        let x0: f64 = 1.0;
+        let y0: f64 = 2.0;
+        let byref_value = Arc::new(Point::new(x0, y0));
+        
+        println!("    initial: ");
+        println!("        X:  {}", byref_value.get_x());
+        println!("        Y:  {}", byref_value.get_y());
+        byref_inc_test(&byref_value);
+        println!("    result: ");
+        println!("        X:  {}", byref_value.get_x());
+        println!("        Y:  {}", byref_value.get_y());
+        if (byref_value.get_x() == (x0 + 1.0)) &&
+            (byref_value.get_y() == (y0 + 1.0)) {
+            println!("    byRef test Passed");
+        } else {
+            println!("    byRef test Failed");
+        }
+
+        print!("Running vector test...");
+        let my_array: Vec<String> = vec!["one".to_string(), "two".to_string(), "three".to_string()];
+        let mut target_my_array: Vec<String> = my_array.to_vec();
+        target_my_array.append(&mut my_array.clone());
+        assert_eq!(target_my_array, vector_inc_test(my_array.clone()));
+        println!("Passed");
+        
+        print!("Running HashMap test...");
+        let mut initial_hash_map: HashMap<String, i32> = 
+            [("one".to_string(), 1), 
+            ("two".to_string(), 2), 
+            ("three".to_string(), 3)]
+            .iter().cloned().collect();
+        let result_hash_map = hash_map_inc_test(initial_hash_map.clone());
+        initial_hash_map.insert(String::from("zero"), 0);
+        assert_eq!(initial_hash_map, result_hash_map);
+        println!("Passed");
+
+        print!("Running void test...");
+        assert_eq!((), void_inc_test(0));
+        println!("Passed");
+        
+        // ----- Error Code Test On Success -----
+        print!("Running Error Code Test On Success test...");
+        let value_1: i32 = 0;
+        let value_2: i32 = 5;
+        let r_value: Result<i32, MyArithmeticError> = error_inc_test(value_1, value_2);
+        if r_value.is_ok() {
+            println!("Passed");
+            println!("     Returned value = {:?}", r_value.unwrap());
+        }
+        else {
+            println!("Passed");
+            println!("     Returned value = {:?}", r_value.unwrap_err());
+        }
+
+        // ----- Error Code Test On Failure -----
+        print!("Running Error Code Test On Failure test...");
+        let value_1: i32 = i32::MAX;
+        let value_2: i32 = 1;
+        let r_value: Result<i32, MyArithmeticError> = error_inc_test(value_1, value_2);
+        if r_value.is_ok() {
+            println!("Passed");
+            println!("     Returned value = {:?}", r_value.unwrap());
+        }
+        else {
+            println!("Passed");
+            println!("     Returned value = {:?}", r_value.unwrap_err());
+        }
+
+        println!("----- End of Tests -----\n");
+    }
+}
+```
+
+To test the Rust library by itself, please enter the following on the command line:
+
+```cargo test -- --nocapture```
+
+This command instructs cargo to build the library and execute the test commands.  The ``` -- --nocapture``` portion instructs cargo to display anything printed using the ```println!``` statements in the test code.  If everything builds and runs correctly, you should see output similar to the following:
+
+```
+% cargo test -- --nocapture
+   Compiling library v0.1.0 (/Users/XXXXXX/ffi-tutorials/Wrapper_Java_Kotlin/library)
+    Finished test [unoptimized + debuginfo] target(s) in 1.54s
+     Running unittests src/lib.rs (target/debug/deps/library-4824b9037f064677)
+
+running 1 test
+test tests::internal ... 
+
+----- Start of Tests -----
+Running boolean test...Passed
+Running signed int tests...Passed
+Running unsigned int tests...Passed
+Running float test...Passed
+Running double test...Passed
+Running String test...Passed
+Running byRef test...
+    initial: 
+        X:  1
+        Y:  2
+    result: 
+        X:  2
+        Y:  3
+    byRef test Passed
+Running vector test...Passed
+Running HashMap test...Passed
+Running void test...Passed
+Running Error Code Test On Success test...Passed
+     Returned value = 5
+Running Error Code Test On Failure test...Passed
+     Returned value = IntegerOverflow { a: 2147483647, b: 1 }
+----- End of Tests -----
+
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests uniffi-bindgen.rs (target/debug/deps/uniffi_bindgen-950cf3f13364c569)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+%
+```
+
+
 ## Generating the Kotlin Language Wrapper
 
 With the newly created *uniffi-bindgen*, we can create the Kotlin wrapper via the command line by entering:
