@@ -307,7 +307,7 @@ Creating the Python test application is much simpler than the Swift version, bec
 
 1. Go to the tutorial main directory and create a sub-directory called *python_test_app* and navigate into it
 2. Copy the required library files into *python_test_app*
-	1. ./library/target/debug/libuniffi_library.dylib (*Note:  currently, building the Rust library creates a filed called liblibrary.dylib.  As part of this copy step, the library should be renamed as libuniffi__library.dylib.  This descrepancy will likely be resolved in future versions of uniffi.*)
+	1. ./library/target/debug/libuniffi_library.dylib (*Note:  currently, building the Rust library creates a filed called liblibrary.dylib.  As part of this copy step, the library should be renamed as libuniffi_library.dylib.  This descrepancy will likely be resolved in future versions of uniffi.*)
 	2. ./library/src/library.py
 3. Create the main Python application file (main.py) and add the following:
 
